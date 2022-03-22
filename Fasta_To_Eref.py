@@ -205,13 +205,15 @@ def Fasta_To_Eref(path_in, path_eref, path_folder, path_mod):
     w.Overwrite_Allow()
     w.Set_Width(DEFAULT__width)
     w.Set_Newline("\n")
-    w.Toggle_Printing_M(False)
+    w.Toggle_Printing_M(True)
     
     # Main loop
     PRINT.printP(STR__f2e_begin)
     while not f.End():
         f.Read()
         name = f.Get_Name()
+        name = name.split("\t")
+        name = name[0]
         name_ = name + FILEMOD__FASTA_EXTENSION
         seq = f.Get_Seq()
         # Metrics
