@@ -40,6 +40,7 @@ class RetroSeq_Calls_Reader(Table_Reader):
     
     f = RetroSeq_Calls_Reader()
     f.Set_New_Path("F:/Filepath.vcf")
+    f.Create_Chr_Order(["I", "II", "III"])
     f.Open()
     
     x = Other_File_Reader()
@@ -72,14 +73,15 @@ class RetroSeq_Calls_Reader(Table_Reader):
     _MSG__object_type = "RetroSeq Calls File Reader"
     _MSG__units_of_measure = "Rows"
     
+    _MSG__no_order = "No chromosome order specified."
     _MSG__faulty_line = "Faulty line of data:\n\t{S}"
+    _MSG__undocumented_chr = "Undocumented chromosome:\n\t{S}"
     
     
 
     # Constructor & Destructor #################################################
     
-    def __init__(self, file_path="", auto_open=False, delimiter="",
-                enclosers=[], header_params=[], keep_enclosers=True):
+    def __init__(self, file_path="", chr_order=[]):
         """
         Creates a File Reader object. The filepath will be tested if a
         filepath is supplied.
@@ -88,13 +90,46 @@ class RetroSeq_Calls_Reader(Table_Reader):
         self.current_raw = self.next_raw = ""
         self.header_text = ""
         self.buffer = []
+        self.Create_Chr_Order(chr_order)
+    
+    def Create_Chr_Order(self, chr_order):
+        """
+        Create a dictionary of chromosome indexes which can be used to look up
+        the "order" which the chromosomes need to be in.
+        """
+        index = 0
+        self.order = {}
+        for c in chr_order:
+            self.order[c] = index
+            index += 1
     
     
     
     # Property Methods #########################################################
     
     # File I/O Methods #########################################################
-            
+    
+    def Open(self, new_path=""):
+        """
+        Attempts to open a file. If a file path is not specified, the stored
+        file path will be used instead.
+        
+        Requires at least one delimiter to be set.
+        """
+        if self.order:
+            File_Reader.Open(self, new_path)
+        else:
+            self.printE(self._MSG__no_order)
+            return
+    
+    def Read_Header(self):
+        """
+        Override the Table File Reader's automatic reading of the first line.
+        """
+        pass
+    
+    
+    
     # File Reading Methods #####################################################
     
     def Get_Buffer(self):
@@ -163,8 +198,26 @@ class RetroSeq_Calls_Reader(Table_Reader):
         """
         future = self.next_element
         if not future: return False
-        if future[0] != coords[0]: return True
-        if future[1] < coords[1]: return True
+        if self._behind_chr(coords[0]): return True
+        elif (future[0] == coords[0]) and (future[1] < coords[1]): return True
+        return False
+    
+    def _behind_chr(self, target_chr):
+        """
+        Check to see if the "next" entry's chromosome is "behind" the specified
+        chromosome.
+        """
+        future_chr = self.next_element[0]
+        future_index = self.order.get(future_chr, -1)
+        if future_index == -1:
+            self.printE(self._MSG__undocumented_chr.format(S = future_chr))
+            return False
+        target_index = self.order.get(target_chr, -1)
+        if target_index == -1:
+            self.printE(self._MSG__undocumented_chr.format(S = target_chr))
+            return False
+        if future_index < target_index:
+            return True
         return False
     
     def _within_range(self, coords):
@@ -182,8 +235,9 @@ class RetroSeq_Calls_Reader(Table_Reader):
         """
         Read in the next row and process it.
         
-        Return an empty string if the end of the file has been reached.
+        Return an empty list if the end of the file has been reached.
         """
+        if self.EOF: return []
         raw = self.file.readline()
         data = self._process_line(raw)
         return data
