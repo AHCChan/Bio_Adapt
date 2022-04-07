@@ -92,7 +92,7 @@ class CLASSIFICATION:
 class OUTPUT:
     FLAGS=1
     COUNT=2
-    FLAGS_POSITVE=3
+    FLAGS_POSITIVE=3
 
 class TIEBREAKER:
     FULL=1
@@ -135,7 +135,11 @@ STR__invalid_tiebreaker = """
 ERROR: Invalid tiebreaker method specified:
     {S}"""
 
-
+STR__insufficient_columns = """
+ERROR: Insufficient columns in coordinates file. The coordinates file should
+contain at least 6 columns, the first 3 of which contain genome coordinates,
+the 4th of which should contain the name of the TE, while the 5th and 6th should
+contain the names of the TE family or grouping."""
 
 
 
@@ -176,268 +180,268 @@ LIST__vcf_1 = [".vcf", ".Vcf", ".VCF"]
 # Dictionaries #################################################################
 
 DICT__Values = {
-    CLASSIFICATION.PASS_FAIL = {
-        OUTPUT.FLAGS = {
-            TIEBREAKER.FULL = {
+    CLASSIFICATION.PASS_FAIL: {
+        OUTPUT.FLAGS: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: -4,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: -4,
                 FLAG.TIED_SUCCESS: 4,
                 FLAG.TIED_FAMILY: -4},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: -4,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: -4,
                 FLAG.TIED_SUCCESS: 3,
                 FLAG.TIED_FAMILY: -4},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: -4,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: -4,
                 FLAG.TIED_SUCCESS: -4,
                 FLAG.TIED_FAMILY: -4}},
-        OUTPUT.COUNT = {
-            TIEBREAKER.FULL = {
+        OUTPUT.COUNT: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}},
-        OUTPUT.FLAGS_POSITIVE = {
-            TIEBREAKER.FULL = {
+        OUTPUT.FLAGS_POSITIVE: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 8,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 6,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}}},
-    CLASSIFICATION.PASS_SKIP_FAIL = {
-        OUTPUT.FLAGS = {
-            TIEBREAKER.FULL = {
+    CLASSIFICATION.PASS_SKIP_FAIL: {
+        OUTPUT.FLAGS: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: -4,
                 FLAG.TIED_SUCCESS: 4,
                 FLAG.TIED_FAMILY: -4},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: -4,
                 FLAG.TIED_SUCCESS: 3,
                 FLAG.TIED_FAMILY: -4},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: -4,
                 FLAG.TIED_SUCCESS: -4,
                 FLAG.TIED_FAMILY: -4}},
-        OUTPUT.COUNT = {
-            TIEBREAKER.FULL = {
+        OUTPUT.COUNT: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}},
-        OUTPUT.FLAGS_POSITIVE = {
-            TIEBREAKER.FULL = {
+        OUTPUT.FLAGS_POSITIVE: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 4,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 8,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 4,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 6,
                 FLAG.TIED_FAMILY: 0},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 4,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 0,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}}},
-    CLASSIFICATION.PERFECT_FAM_FAIL = {
-        OUTPUT.FLAGS = {
-            TIEBREAKER.FULL = {
+    CLASSIFICATION.PERFECT_FAM_FAIL: {
+        OUTPUT.FLAGS: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: -4,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: 3,
                 FLAG.TIED_SUCCESS: 4,
                 FLAG.TIED_FAMILY: 3},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: -4,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: 3,
                 FLAG.TIED_SUCCESS: 2,
                 FLAG.TIED_FAMILY: 1},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: -4,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: 3,
                 FLAG.TIED_SUCCESS: -4,
                 FLAG.TIED_FAMILY: -4}},
-        OUTPUT.COUNT = {
-            TIEBREAKER.FULL = {
+        OUTPUT.COUNT: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 1,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 1},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 1,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 1},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 1,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}},
-        OUTPUT.FLAGS_POSITIVE = {
-            TIEBREAKER.FULL = {
+        OUTPUT.FLAGS_POSITIVE: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 7,
                 FLAG.TIED_SUCCESS: 8,
                 FLAG.TIED_FAMILY: 7},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 7,
                 FLAG.TIED_SUCCESS: 6,
                 FLAG.TIED_FAMILY: 5},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 7,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}}},
-    CLASSIFICATION.PERFECT_FAM_SKIP_FAIL = {
-        OUTPUT.FLAGS = {
-            TIEBREAKER.FULL = {
+    CLASSIFICATION.PERFECT_FAM_SKIP_FAIL: {
+        OUTPUT.FLAGS: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: 3,
                 FLAG.TIED_SUCCESS: 4,
                 FLAG.TIED_FAMILY: 3},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: 3,
                 FLAG.TIED_SUCCESS: 2,
                 FLAG.TIED_FAMILY: 1},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 4,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: -4,
                 FLAG.FAMILY: 3,
                 FLAG.TIED_SUCCESS: -4,
                 FLAG.TIED_FAMILY: -4}},
-        OUTPUT.COUNT = {
-            TIEBREAKER.FULL = {
+        OUTPUT.COUNT: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 1,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 1},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 1,
                 FLAG.TIED_SUCCESS: 1,
                 FLAG.TIED_FAMILY: 1},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 1,
                 FLAG.SKIP: 0,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 1,
                 FLAG.TIED_SUCCESS: 0,
                 FLAG.TIED_FAMILY: 0}},
-        OUTPUT.FLAGS_POSITIVE = {
-            TIEBREAKER.FULL = {
+        OUTPUT.FLAGS_POSITIVE: {
+            TIEBREAKER.FULL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 4,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 7,
                 FLAG.TIED_SUCCESS: 8,
                 FLAG.TIED_FAMILY: 7},
-            TIEBREAKER.PARTIAL = {
+            TIEBREAKER.PARTIAL: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 4,
                 FLAG.FAIL: 0,
                 FLAG.FAMILY: 7,
                 FLAG.TIED_SUCCESS: 6,
                 FLAG.TIED_FAMILY: 5},
-            TIEBREAKER.NONE = {
+            TIEBREAKER.NONE: {
                 FLAG.SUCCESS: 8,
                 FLAG.SKIP: 4,
                 FLAG.FAIL: 0,
@@ -475,18 +479,18 @@ def Get_VCF_From_Folder(dirpath):
         files = os.listdir(dirpath)
         files = [string for string in files if Is_VCF(string)]
         if len(files) == 0:
-            PRINT.printE(STR__error_no_VCF.format(S=dirpath))
+            PRINT.printE(STR__error_no_VCF.format(D=dirpath))
             return []
         files = [dirpath + "\\" + string for string in files]
         return files
     except:
-        PRINT.printE(STR__VCF_Invalid)
+        PRINT.printE(STR__VCF_Invalid.format(D=dirpath))
         return []
 
 def Is_VCF(filepath):
     """
     """
-    if filepath[:-4] in LIST__vcf_1: return True
+    if filepath[-4:] in LIST__vcf_1: return True
     return False
 
 def Get_Chrs_From_File(filepath):
@@ -520,15 +524,39 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
     files_perfect = [0]*length
     files_partial = [0]*length
     
-    # Setup the I/O
+    # Setup the I/O (1)
     b = Table_Reader(baseline_file)
     b.Set_Delimiter("\t")
 
-    files = [RetroSeq_Calls_File_Reader(f) for f in calls_files]
+    # Header (1)
+    headers = ["Chr", "Start", "End", "Name", "Family1", "Family2"]
+    b.Open()
+    b.Read()
+    values = b.Get_Current()
+    length = len(values)
+    extras = length-6
+    b.Close()
+    if extras < 0:
+        PRINT.printE(STR__insufficient_columns)
+        return 1
+    
+    # Setup the I/O (2)
+    files = [RetroSeq_Calls_Reader(f) for f in calls_files]
     for f in files:
         f.Create_Chr_Order(list_of_chrs)
-    
+    for f in files:
+        f.Open()
     o = open(output_file ,"w")
+    
+    # Header (2)
+    while extras > 0:
+        headers.append("#")
+        headers -= 1
+    for f in calls_files:
+        filename = Get_File_Name(f)
+        headers.append(filename)
+    sb = "\t".join(headers) + "\n"
+    o.write(sb)
     
     # Main loop
     b.Open()
@@ -540,7 +568,7 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
         chr_ = values[0]
         start = int(values[1])
         end = int(values[2])
-        name = values[3]
+        name = values[3].upper()
         family_1 = values[4]
         family_2 = values[5]
         coords = [chr_, start, end]
@@ -558,6 +586,7 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
             if calls == 0: pass
             elif calls == 1:
                 c_chr_, c_start, c_count, c_name = best[0]
+                c_name = c_name.upper()
                 count = c_count
                 if c_name == name: # Perfect
                     # Stats
@@ -573,9 +602,12 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
                     files_partial[i] += 1
                     # Flag
                     flag = FLAG.FAMILY
+                else:
+                    flag = FLAG.FAIL
             else:
                 for call in best:
                     c_chr_, c_start, c_count, c_name = call
+                    c_name = c_name.upper()
                     if c_name == name:
                         flag = FLAG.TIED_SUCCESS
                         count = c_count
@@ -586,7 +618,7 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
             # Values
             value = DICT__Values[classification][output][tiebreaker][flag]
             if output == OUTPUT.COUNT: value = value*count
-            values.append(value)
+            values.append(str(value))
         # Max stats
         if perfect > site_max_perfect: site_max_perfect = perfect
         if partial > site_max_partial: site_max_partial = partial
@@ -599,6 +631,8 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
     o.close()
     for f in files:
         f.Close()
+    
+    PRINT.printP(STR__compare_complete)
     
     # Reporting
     
