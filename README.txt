@@ -21,6 +21,7 @@ This program requires the following files from the following modules:
     File_Reader module: (https://github.com/AHCChan/File_Reader)
         File_Reader.py
         FASTA_File_Reader.py
+        Table_File_Reader.py
 
     File_Writer module: (https://github.com/AHCChan/File_Writer)
         File_Writer.py
