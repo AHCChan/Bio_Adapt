@@ -2,7 +2,6 @@ HELP_DOC = """
 WORMBASE GENE EXPRESSION GENES OVERLAP REPORT
 (version 1.0)
 by Angelo Chan
-
 This is a program for taking a folder of Wormbase Gene Expression files and
 generating a report on the genes listed within those files.
 
@@ -64,13 +63,14 @@ OPTIONAL:
 EXAMPLE:
     
     python27 WB_GE_Genes_Overlap_Report.py Path/WB_GE_Results -o
-            Genes_Summary.tsv
+            Genes_Summary.tsv Genes_Universal.tsv -a Y
 
 
 
 USAGE:
     
-    python27 WB_GE_Genes_Overlap_Report.py <input_folder> [-o <output_file>]
+    python27 WB_GE_Genes_Overlap_Report.py <input_folder> [-o <report_file>
+            <universal_file>] [-a <abridge>]
 """
 
 NAME = "WB_GE_Genes_Overlap_Report.py"
@@ -97,6 +97,13 @@ FILEMOD_2 = "__Universal_Genes.tsv"
 
 
 
+# Defaults #####################################################################
+"NOTE: altering these will not alter the values displayed in the HELP DOC"
+
+DEFAULT__Abridge = False
+
+
+
 # Imported Modules #############################################################
 
 import sys
@@ -118,6 +125,11 @@ STR__use_help = "\nUse the -h option for help:\n\t python "\
 
 
 
+STR__error_no_WB_GE = "ERROR: No Wormbase gene expression data files detected "\
+" in:\n\t{f}"
+
+
+
 STR__header_1 = "# Total number of datasets: "
 STR__header_2 = "# Total number of samples: "
 STR__header_3 = "# Number of universal genes: "
@@ -128,17 +140,17 @@ STR__header_6 = "# The best performing gene is found in this many samples: "
 STR__column_header = "SAMPLE_ID\tTOTAL_DATASETS\tTOTAL_SAMPLES"
 
 
+
 STR__metrics = """
                     Total Datasets: {A}
                      Total Samples: {B}
-
-       No. Of Genes In All Samples: {C}
-    
-                       Total Genes: {D}
+                       Total Genes: {C}
+                       
+       No. Of Genes In All Samples: {D} ({E}%)
                     
     Best Performing Gene(s) Present in:
-                          Datasets: {E} ({F}%)
-                           Samples: {G} ({H}%)
+                          Datasets: {F} ({G}%)
+                           Samples: {H} ({I}%)
 """
 
 STR__report_begin = "\nRunning WB_GE_Genes_Overlap_Report..."
@@ -245,7 +257,9 @@ def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file,
             sample_list)
     total_datasets = len(dataset_list)
     total_samples = len(sample_list)
-    summary_metrics = [total_datasets, total_samples] + summary_metrics
+    total_genes = len(gene_list)
+    summary_metrics = ([total_datasets, total_samples, total_genes] +
+            summary_metrics)
     
     # Write outcomes to file
     Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
@@ -280,7 +294,7 @@ def Get_WB_GE_Files(input_folder):
     except:
         return results
     for file_ in files:
-        if (file_[:7] == "WBPaper") and (file_[-4:] == ".csv"):
+        if Validate_WB_CE_File(file_):
             full_path = input_folder + "/" + file_
             results.append(full_path)
     return results
@@ -428,7 +442,7 @@ def Get_Summary_Metrics(data, data_2, gene_list, dataset_list, sample_list):
     """
     Return a list of summary metrics for the data, including:
         * The number of genes found universally in all samples
-        * The total number of genes
+        * The percentage of genes found universally in all samples (string)
         * For the best performing gene(s), how many datasets were they in
         * For the best performing gene(s), how many samples were they in
     
@@ -453,7 +467,7 @@ def Get_Summary_Metrics(data, data_2, gene_list, dataset_list, sample_list):
             A list of all the samples in the data.
     
     Get_Summary_Metrics(dict<str:dict<str:int>>, dict<str:dict<str:int>>) ->
-            [int, int, int, int]
+            [int, str, int, int]
     """
     # Setup
     gene_count = len(gene_list)
@@ -472,8 +486,12 @@ def Get_Summary_Metrics(data, data_2, gene_list, dataset_list, sample_list):
             maximum_samples = gene_in_samples
         # Adjust count
         if data[gene][0] == sample_count: perfect_count += 1
-    #
-    return [perfect_count, gene_count, maximum_datasets, maximum_samples]
+    # Perfect string
+    percentage = (perfect_count*100.0)/gene_count
+    percentage = str(percentage)
+    percentage = Trim_Percentage_Str(percentage, 2)
+    # Return
+    return [perfect_count, percentage, maximum_datasets, maximum_samples]
 
 
 
@@ -485,8 +503,9 @@ def Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
     following information:
         * The total number of datasets
         * The total number of samples
-        * The number of genes in all samples
         * The total number of genes
+        * The number of genes in all samples
+        * The percentage of genes found universally in all samples (string)
         * For the best performing gene(s), how many datasets were they in
         * For the best performing gene(s), how many samples were they in
     This will be followed by a table detailing which dataset and which samples
@@ -512,14 +531,16 @@ def Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
             (list<str>)
             A list of all the samples in the data.
     @summary_metrics
-            (list<int>)
+            (list<int/str>)
             A list of summary metrics for the data, including:
                 * The total number of datasets
                 * The total number of samples
-                * The number of genes in all samples
                 * The total number of genes
+                * The number of genes in all samples
+                * The percentage of genes found universally in all samples
+                        (string)
                 * For the best performing gene(s), how many datasets were they
-                    in
+                        in
                 * For the best performing gene(s), how many samples were they in
     @report_file
             (str - filepath)
@@ -538,9 +559,10 @@ def Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
     w.write(STR__header_1 + str(summary_metrics[0]) + "\n")
     w.write(STR__header_2 + str(summary_metrics[1]) + "\n")
     w.write(STR__header_3 + str(summary_metrics[2]) + "\n")
-    w.write(STR__header_4 + str(summary_metrics[3]) + "\n")
-    w.write(STR__header_5 + str(summary_metrics[4]) + "\n")
-    w.write(STR__header_6 + str(summary_metrics[5]) + "\n")
+    w.write(STR__header_4 + str(summary_metrics[3]) + " (" +
+            summary_metrics[4] + "%)\n")
+    w.write(STR__header_5 + str(summary_metrics[5]) + "\n")
+    w.write(STR__header_6 + str(summary_metrics[6]) + "\n")
     # Column headers
     w.write(STR__column_header)
     if not abridge_report:
@@ -606,8 +628,10 @@ def Report_Metrics(summary_metrics):
             A list of summary metrics for the data, including:
                 * The total number of datasets
                 * The total number of samples
-                * The number of genes in all samples
                 * The total number of genes
+                * The number of genes in all samples
+                * The percentage of genes found universally in all samples
+                        (string)
                 * For the best performing gene(s), how many datasets were they
                     in
                 * For the best performing gene(s), how many samples were they in
@@ -615,7 +639,13 @@ def Report_Metrics(summary_metrics):
     Report_Metrics(int, int, int, list<int>, list<int>) -> None
     """
     # Unpacking
-    datasets, samples, u_genes, genes, in_datasets, in_samples = summary_metrics
+    datasets = summary_metrics[0]
+    samples = summary_metrics[1]
+    genes = summary_metrics[2]
+    u_genes = summary_metrics[3]
+    u_percent = summary_metrics[4]
+    in_datasets = summary_metrics[5]
+    in_samples = summary_metrics[6]
     # Calculations
     percentage_datasets = (in_datasets*100.0)/datasets
     percentage_samples = (in_samples*100.0)/samples
@@ -641,9 +671,9 @@ def Report_Metrics(summary_metrics):
     in_datasets = Pad_Str(in_datasets, max_size, " ", 0)
     in_samples = Pad_Str(in_samples, max_size, " ", 0)
     # Print
-    PRINT.printM(STR__metrics.format(A = datasets, B = samples, C = u_genes,
-            D = genes, E = in_datasets, F = percentage_datasets, G = in_samples,
-            H = percentage_samples))
+    PRINT.printM(STR__metrics.format(A = datasets, B = samples, C = genes,
+            D = u_genes, E = u_percent, F = in_datasets,
+            G = percentage_datasets, H = in_samples, I = percentage_samples))
 
 
 
@@ -656,9 +686,173 @@ def Parse_Command_Line_Input__WB_GE_Genes_Overlap_Report(
     function with appropriate arguments if the command line input is valid.
     """
     PRINT.printP(STR__parsing_args)
+    # Remove the runtime environment variable and program name from the inputs
+    inputs = Strip_Non_Inputs(raw_command_line_input, NAME)
+    
+    # No inputs
+    if not inputs:
+        PRINT.printE(STR__no_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Help option
+    if inputs[0] in LIST__help:
+        print(HELP_DOC)
+        return 0
+    
+    # Initial validation
+    if len(inputs) < 1:
+        PRINT.printE(STR__insufficient_inputs)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Validate mandatory inputs
+    path_in = inputs.pop(0)
+    valid = Validate_WB_GE_Data_Folder(path_in)
+    if valid == 1:
+        PRINT.printE(STR__error_no_WB_GE.format(f = path_in))
+        PRINT.printE(STR__use_help)
+        return 1
+    elif valid == 2:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Set up rest of the parsing
+    abridge = DEFAULT__Abridge
+    path_out_report = ""
+    path_out_universal = ""
+    
+    # Initial validation
+    while inputs:
+        arg = inputs.pop(0)
+        try: # Following arguments
+            if arg in ["-o"]:
+                arg2 = inputs.pop(0)
+                arg3 = inputs.pop(0)
+            elif arg in ["-a"]:
+                arg2 = inputs.pop(0)
+            else: # Invalid
+                arg = Strip_X(arg)
+                PRINT.printE(STR__invalid_argument.format(s = arg))
+                PRINT.printE(STR__use_help)
+                return 1
+        except:
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
+            return 1
+        # Flag-dependent response
+        if arg == "-o":
+            path_out_report = arg2
+            path_out_universal = arg3
+        else: #arg == "-a"
+            abridge = Validate_Bool(arg2)
+            if abridge == None:
+                printE(STR__invalid_bool)
+                return 1
+    
+    # Automated output path generation
+    if not path_out_report: path_out = path_in_folder + FILEMOD_1
+    if not path_out_universal: path_out = path_in_folder + FILEMOD_2
+    
+    # Validate output path
+    valid_out = Validate_Write_Path__FILE(path_out_report)
+    if valid_out == 2: return 0
+    if valid_out == 3:
+        PRINT.printE(STR__IO_error_write_forbid)
+        return 1
+    if valid_out == 4:
+        PRINT.printE(STR__IO_error_write_unable)
+        return 1
+    valid_out = Validate_Write_Path__FILE(path_out_universal)
+    if valid_out == 2: return 0
+    if valid_out == 3:
+        PRINT.printE(STR__IO_error_write_forbid)
+        return 1
+    if valid_out == 4:
+        PRINT.printE(STR__IO_error_write_unable)
+        return 1
+    
+    # Run program
+    exit_state = WB_GE_Genes_Overlap_Report(path_in, path_out_report,
+            path_out_universal, abridge)
     
     # Safe exit
-    return 0
+    if exit_state == 0: return 0
+    else:
+        PRINT.printE(STR__use_help)
+        return 1
+    
+def Validate_WB_GE_Data_Folder(dirpath):
+    """
+    Validates the dirpath of the input folder as containing raw downloaded
+    Wormbase Gene Expression data files.
+    
+    A raw downloaded Wormbase Gene Expression data files is defined as a file
+    suffixed by "WBPaper" and has a ".csv" extension.
+    
+    Return 0 if the dirpath is valid and contains at least 1 valid file.
+    Return 1 if the dirpath is valid but contains no valid files.
+    Return 2 if the dirpath is invalid.
+    
+    Validate_Read_Path(str) -> int
+    """
+    try:
+        os.listdir(dirpath)
+        files = files = os.listdir(dirpath)
+        files = [f for f in files if Validate_WB_CE_File(f)]
+        if len(files) > 0: return 0
+        return 1
+    except:
+        return 2
+
+def Validate_Write_Path__FILE(filepath):
+    """
+    Validates the filepath of the output file.
+    Return 0 if the filepath is writtable.
+    Return 1 if the user decides to overwrite an existing file.
+    Return 2 if the user declines to overwrite an existing file.
+    Return 3 if the file exists and the program is set to forbid overwriting.
+    Return 4 if the program is unable to write to the filepath specified.
+    
+    Validate_Write_Path(str) -> int
+    """
+    try:
+        f = open(filepath, "U")
+        f.close()
+    except: # File does not exist. 
+        try:
+            f = open(filepath, "w")
+            f.close()
+            return 0 # File does not exist and it is possible to write
+        except:
+            return 4 # File does not exist but it is not possible to write
+    # File exists
+    if WRITE_PREVENT: return 3
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm.format(f = filepath))
+        if confirm not in LIST__yes: return 2
+    # User is not prevented from overwritting and may have chosen to overwrite
+    try:
+        f = open(filepath, "w")
+        f.close()
+        if WRITE_CONFIRM: return 1 # User has chosen to overwrite existing file
+        return 0 # Overwriting existing file is possible
+    except:
+        return 4 # Unable to write to specified filepath
+    
+def Validate_WB_CE_File(filepath):
+    """
+    Validates a file as a raw Wormbase gene expression data file.
+    
+    A raw downloaded Wormbase Gene Expression data files is defined as a file
+    suffixed by "WBPaper" and has a ".csv" extension.
+    
+    Return True if the file is such a file.
+    Return False otherwise.
+    """
+    if filepath[:7] == "WBPaper" and filepath[-4:] == ".csv": return True
+    return False
 
 
 
