@@ -129,9 +129,9 @@ STR__metrics = """
     
                     Total Genes: {D}
                     
-       Best Performing Gene(s) Presence:
-                           Datasets: {E} ({F}%)
-                            Samples: {G} ({H}%)
+    Best Performing Gene(s) Presence:
+                       Datasets: {E} ({F}%)
+                        Samples: {G} ({H}%)
 """
 
 STR__report_begin = "\nRunning WB_GE_Genes_Overlap_Report..."
@@ -402,10 +402,10 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
             f.Read()
             gene = f[0]
             # Populate
+            data[gene][0] += length # Total count - samples
             for sample in samples:
-                data[gene][0] += length # Total count
                 data[gene][sample] = 1 # Individual samples
-            data_2[gene][0] += 1 # Total count
+            data_2[gene][0] += 1 # Total count - datasets
             data_2[gene][dataset] = 1 # Individual datasets
         f.Close()
 
@@ -592,7 +592,36 @@ def Report_Metrics(summary_metrics):
     
     Report_Metrics(int, int, int, list<int>, list<int>) -> None
     """
-    pass
+    # Unpacking
+    datasets, samples, u_genes, genes, in_datasets, in_samples = summary_metrics
+    # Calculations
+    percentage_datasets = (in_datasets*100.0)/datasets
+    percentage_samples = (in_samples*100.0)/samples
+    # Strings
+    datasets = str(datasets)
+    samples = str(samples)
+    u_genes = str(u_genes)
+    genes = str(genes)
+    in_datasets = str(in_datasets)
+    in_samples = str(in_samples)
+    percentage_datasets = str(percentage_datasets)
+    percentage_samples = str(percentage_samples)
+    # Pad percentages
+    percentage_datasets = Trim_Percentage_Str(percentage_datasets, 2)
+    percentage_samples = Trim_Percentage_Str(percentage_samples, 2)
+    # Pad ints
+    max_size = Get_Max_Len([datasets, samples, u_genes, genes, in_datasets,
+            in_samples])
+    datasets = Pad_Str(datasets, max_size, " ", 0)
+    samples = Pad_Str(samples, max_size, " ", 0)
+    u_genes = Pad_Str(u_genes, max_size, " ", 0)
+    genes = Pad_Str(genes, max_size, " ", 0)
+    in_datasets = Pad_Str(in_datasets, max_size, " ", 0)
+    in_samples = Pad_Str(in_samples, max_size, " ", 0)
+    # Print
+    PRINT.printM(STR__metrics.format(A = datasets, B = samples, C = u_genes,
+            D = genes, E = in_datasets, F = percentage_datasets, G = in_samples,
+            H = percentage_samples))
 
 
 
