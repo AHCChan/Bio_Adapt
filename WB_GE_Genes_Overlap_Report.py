@@ -15,7 +15,7 @@ the number of datasets and samples which contain said gene.
 USAGE:
     
     python27 WB_GE_Genes_Overlap_Report.py <input_folder> [-o <report_file>
-            <universal_file>]
+            <universal_file>] [-a <abridge>]
 
 
 
@@ -51,7 +51,14 @@ OPTIONAL:
         
         The filepath of the output file where a shortlist of genes will be
         output to. These are the genes present in all datasets.
+    
+    abridge
         
+        (DEFAULT: N)
+        
+        Whether or not to abridge the results to, for each gene, only how many
+        datasets and samples a gene occurs in.
+
 
 
 EXAMPLE:
@@ -118,20 +125,20 @@ STR__header_4 = "# Total number of genes: "
 STR__header_5 = "# The best performing gene is found in this many datasets: "
 STR__header_6 = "# The best performing gene is found in this many samples: "
 
-STR__column_header = "SAMPLE_ID"
+STR__column_header = "SAMPLE_ID\tTOTAL_DATASETS\tTOTAL_SAMPLES"
 
 
 STR__metrics = """
-                 Total Datasets: {A}
-                  Total Samples: {B}
+                    Total Datasets: {A}
+                     Total Samples: {B}
 
-    No. Of Genes In All Samples: {C}
+       No. Of Genes In All Samples: {C}
     
-                    Total Genes: {D}
+                       Total Genes: {D}
                     
-    Best Performing Gene(s) Presence:
-                       Datasets: {E} ({F}%)
-                        Samples: {G} ({H}%)
+    Best Performing Gene(s) Present in:
+                          Datasets: {E} ({F}%)
+                           Samples: {G} ({H}%)
 """
 
 STR__report_begin = "\nRunning WB_GE_Genes_Overlap_Report..."
@@ -161,7 +168,8 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 # Functions ####################################################################
 
-def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file):
+def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file,
+            abridge_report):
     """
     Summarize the coverage overlap between the different datasets in
     [input_folder]. That is to say, the degree to which genes appear in most or
@@ -189,11 +197,16 @@ def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file):
             The filepath of the output file where the overall report will be
             output to. The report file will contain a summary of the results at
             the top of the file, followed by a table showing which genes are
-            present in which datasets and which samples.
+            present in how many datasets, how many samples, which datasets and
+            which samples.
     @universal_file
             (str - filepath)
             The filepath of the output file where a shortlist of genes will be
             output to. These are the genes present in all datasets.
+    @abridge_report
+            (bool)
+            Whether or not to abridge the report to just the number of datasets
+            and samples a gene is in.
     
     WB_GE_Genes_Overlap_Report(str, str, str) -> int
     """
@@ -236,7 +249,7 @@ def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file):
     
     # Write outcomes to file
     Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
-            summary_metrics, report_file)
+            summary_metrics, report_file, abridge_report)
     Write_Shortlist_to_File(data, gene_list, total_samples, universal_file)
         
     PRINT.printP(STR__report_complete)
@@ -444,6 +457,7 @@ def Get_Summary_Metrics(data, data_2, gene_list, dataset_list, sample_list):
     """
     # Setup
     gene_count = len(gene_list)
+    sample_count = len(sample_list)
     perfect_count = 0
     maximum_datasets = 0
     maximum_samples = 0
@@ -457,14 +471,14 @@ def Get_Summary_Metrics(data, data_2, gene_list, dataset_list, sample_list):
         if gene_in_samples > maximum_samples:
             maximum_samples = gene_in_samples
         # Adjust count
-        if data[gene][0] == gene_count: perfect_count += 1
+        if data[gene][0] == sample_count: perfect_count += 1
     #
     return [perfect_count, gene_count, maximum_datasets, maximum_samples]
 
 
 
 def Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
-            summary_metrics, report_file):
+            summary_metrics, report_file, abridge_report):
     """
     Write a report of the genes to [report_file].
     The first lines of the output file will begin with "#", and contain the
@@ -507,9 +521,13 @@ def Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
                 * For the best performing gene(s), how many datasets were they
                     in
                 * For the best performing gene(s), how many samples were they in
-    @universal_file
+    @report_file
             (str - filepath)
             The filepath to which the results will be written into.
+    @abridge_report
+            (bool)
+            Whether or not to abridge the report to just the number of datasets
+            and samples a gene is in.
     
     Write_Summary_to_File(dict<str:dict<str:int>>, dict<str:dict<str:int>>int,
             list<int>, str) -> None
@@ -525,18 +543,22 @@ def Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
     w.write(STR__header_6 + str(summary_metrics[5]) + "\n")
     # Column headers
     w.write(STR__column_header)
-    for dataset in dataset_list:
-        w.write("\t" + dataset)
-    for sample in sample_list:
-        w.write("\t" + sample)
+    if not abridge_report:
+        for dataset in dataset_list:
+            w.write("\t" + dataset)
+        for sample in sample_list:
+            w.write("\t" + sample)
     w.write("\n")
     # Body
     for gene in gene_list:
         sb = gene
-        for dataset in dataset_list:
-            sb += "\t" + str(data_2[gene][dataset])
-        for sample in sample_list:
-            sb += "\t" + str(data[gene][sample])
+        sb += "\t" + str(data_2[gene][0])
+        sb += "\t" + str(data[gene][0])
+        if not abridge_report:
+            for dataset in dataset_list:
+                sb += "\t" + str(data_2[gene][dataset])
+            for sample in sample_list:
+                sb += "\t" + str(data[gene][sample])
         sb += "\n"
         w.write(sb)
     # Finish
