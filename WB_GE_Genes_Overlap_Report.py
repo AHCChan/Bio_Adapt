@@ -132,8 +132,8 @@ STR__error_no_WB_GE = "ERROR: No Wormbase gene expression data files detected "\
 
 STR__header_1 = "# Total number of datasets: "
 STR__header_2 = "# Total number of samples: "
-STR__header_3 = "# Number of universal genes: "
-STR__header_4 = "# Total number of genes: "
+STR__header_3 = "# Total number of genes: "
+STR__header_4 = "# Number of universal genes: "
 STR__header_5 = "# The best performing gene is found in this many datasets: "
 STR__header_6 = "# The best performing gene is found in this many samples: "
 
