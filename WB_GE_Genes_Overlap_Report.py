@@ -408,7 +408,7 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
             (str - filepath)
             A list containing the filepaths of all the data files.
     
-    Get_Samples(list<str>) -> None
+    Populate_With_WB_GE_Data(dict, dict, list<str>) -> None
     """
     f = Table_Reader()
     f.Set_Delimiter("\t")
