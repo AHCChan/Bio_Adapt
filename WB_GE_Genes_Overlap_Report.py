@@ -636,7 +636,7 @@ def Report_Metrics(summary_metrics):
                     in
                 * For the best performing gene(s), how many samples were they in
     
-    Report_Metrics(int, int, int, list<int>, list<int>) -> None
+    Report_Metrics([int, int, int, int, str, list<int>, list<int>]) -> None
     """
     # Unpacking
     datasets = summary_metrics[0]
