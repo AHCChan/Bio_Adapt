@@ -799,7 +799,7 @@ def Validate_WB_GE_Data_Folder(dirpath):
     """
     try:
         os.listdir(dirpath)
-        files = files = os.listdir(dirpath)
+        files = os.listdir(dirpath)
         files = [f for f in files if Validate_WB_CE_File(f)]
         if len(files) > 0: return 0
         return 1
