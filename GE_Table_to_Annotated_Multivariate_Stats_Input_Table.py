@@ -169,10 +169,12 @@ STR__use_help = "\nUse the -h option for help:\n\tpython "\
 
 
 
-STR__error_no_GE = "ERROR: No files containing the file idenfier string: \n\t "\
+STR__invalid_annotation_file = "\nERROR: Invalid annotation file:\n\t{f}"
+
+STR__error_no_GE = "\nERROR: No files containing the file idenfier string: \n\t "\
 "{i}\n... were found in the folder: \n\t{f}"
 
-STR__error_annotate_file_inconsistent = "ERROR: Annotation file does not "\
+STR__error_annotate_file_inconsistent = "\nERROR: Annotation file does not "\
 "contain a consistent number of columns."
 
 
@@ -552,23 +554,97 @@ def Parse_Command_Line_Input__Consolidate_GE_Files(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
+    # Setup mandatory inputs
+    path_in = inputs.pop(0)
+    file_identifier = inputs.pop(0)
+    input_format = inputs.pop(0)
+    path_shortlist = inputs.pop(0)
+    
     # Validate mandatory inputs
+    input_files = Get_Files_W_Substring(path_in, file_identifier)
+    if input_files == None:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    if input_files == []:
+        PRINT.printE(STR__read_folder_no_substring.format(f = path_in,
+                s = file_identifier))
+        PRINT.printE(STR__use_help)
+        return 1
+    delim = Validate_Table_Type(input_format)
+    if not delim:
+        PRINT.printE(STR__invalid_table_type.format(s = input_format))
+        PRINT.printE(STR__use_help)
+        return 1
+    valid = Validate_Read_Path(path_shortlist)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read.format(f = path_shortlist))
+        PRINT.printE(STR__use_help)
+        return 1
     
     # Set up rest of the parsing
-    annotation_file = ""
+    path_annotations = ""
     path_out = ""
     header = DEFAULT__Header
-    annotation_only = DEFAULT__Annotated_Only
+    annotated_only = DEFAULT__Annotated_Only  
     
-    # Initial validation
+    # Validate optional inputs (except output path)
+    while inputs:
+        arg = inputs.pop(0)
+        try: # Following arguments
+            if arg in ["-a", "-o", "-h", "-b"]:
+                arg2 = inputs.pop(0)
+            else: # Invalid
+                arg = Strip_X(arg)
+                PRINT.printE(STR__invalid_argument.format(s = arg))
+                PRINT.printE(STR__use_help)
+                return 1
+        except: # Redundant in current version
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
+            return 1
+        # Flag-dependent response
+        if arg == "-a":
+            valid = Validate_Read_Path(arg2)
+            if valid == 1:
+                PRINT.printE(STR__invalid_annotation_file.format(f = arg2))
+                PRINT.printE(STR__use_help)
+                return 1
+            path_annotations = arg2
+        elif arg == "-o":
+            path_out = arg2
+        elif arg == "-h":
+            valid = Validate_Bool(arg2)
+            if valid == None:
+                PRINT.printE(STR__invalid_arg_for_flag.format("-h"))
+                PRINT.printE(STR__use_help)
+                return 1
+            header = valid
+        else: #arg == "-b"
+            valid = Validate_Bool(arg2)
+            if valid == None:
+                PRINT.printE(STR__invalid_arg_for_flag.format("-b"))
+                PRINT.printE(STR__use_help)
+                return 1
+            annotation_only = valid
     
     # Automated output path generation
+    if not path_out: path_out = path_in + FILEMOD
     
     # Validate output path
+    valid_out = Validate_Write_Path__FILE(path_out)
+    if valid_out == 2: return 0
+    if valid_out == 3:
+        PRINT.printE(STR__IO_error_write_forbid)
+        return 1
+    if valid_out == 4:
+        PRINT.printE(STR__IO_error_write_unable)
+        return 1
     
     # Run program
-    exit_state = Consolidate_GE_Files(file_list, file_delimiter, gene_list,
-            shortlist_file, annotation_file, path_out, header, annotation_only)
+    exit_state = Consolidate_GE_Files(path_in, file_identifier, delim,
+            path_shortlist, path_annotations, path_out, header,
+            annotated_only)
     
     # Safe exit
     if exit_state == 0: return 0
@@ -577,6 +653,43 @@ def Parse_Command_Line_Input__Consolidate_GE_Files(raw_command_line_input):
             PRINT.printE(STR__error_annotate_file_inconsistent)
         PRINT.printE(STR__use_help)
         return 1
+
+
+
+def Validate_Write_Path__FILE(filepath):
+    """
+    Validates the filepath of the output file.
+    Return 0 if the filepath is writtable.
+    Return 1 if the user decides to overwrite an existing file.
+    Return 2 if the user declines to overwrite an existing file.
+    Return 3 if the file exists and the program is set to forbid overwriting.
+    Return 4 if the program is unable to write to the filepath specified.
+    
+    Validate_Write_Path(str) -> int
+    """
+    try:
+        f = open(filepath, "U")
+        f.close()
+    except: # File does not exist. 
+        try:
+            f = open(filepath, "w")
+            f.close()
+            return 0 # File does not exist and it is possible to write
+        except:
+            return 4 # File does not exist but it is not possible to write
+    # File exists
+    if WRITE_PREVENT: return 3
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm.format(f = filepath))
+        if confirm not in LIST__yes: return 2
+    # User is not prevented from overwritting and may have chosen to overwrite
+    try:
+        f = open(filepath, "w")
+        f.close()
+        if WRITE_CONFIRM: return 1 # User has chosen to overwrite existing file
+        return 0 # Overwriting existing file is possible
+    except:
+        return 4 # Unable to write to specified filepath
 
 
 
