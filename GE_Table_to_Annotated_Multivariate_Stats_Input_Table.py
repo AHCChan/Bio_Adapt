@@ -16,7 +16,6 @@ one sample. It will work with or without a header row.
 
 
 
-
 USAGE:
     
     python27 GE_Table_to_Annotated_Multivariate_Stats_Input_Table.py

@@ -9,6 +9,18 @@ The report will state the number of datasets, the number of samples, the number
 of genes found in all samples, some other information, and for each gene, state
 the number of datasets and samples which contain said gene.
 
+NOTE: In some datasets, a gene is not detected in some samples, but the gene is
+still included in the results. If the results are absolute values like copy
+number or signal strength, then such samples will simply have a value of 0.
+However, it is common practice to log-transform gene expression data for a
+variety of reasons. However, 0 cannot be log-transformed. A common solution to
+this problem is to set the "log-tansformed value" to a very low number, such
+as -33.2192809488736. (Under a log2 transform system, this would be the result
+if the original, non-log2-trasnformed value was 0.0000000001.) Such an approach
+may work for some analyses, but greatly distort the results for others. More
+importantly, genes with such values need to be excluded from certain analyses,
+despite possibly being "present" in all datasets.
+
 
 
 USAGE:
@@ -395,6 +407,19 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
         dataset file name, and the value is a 1 or a 0. 1 if the gene is found
         in that dataset, and a 0 otherwise.
     
+    NOTE: In some datasets, a gene is not detected in some samples, but the gene
+    is still included in the results. If the results are absolute values like
+    copy number or signal strength, then such samples will simply have a value
+    of 0. However, it is common practice to log-transform gene expression data
+    for a variety of reasons. However, 0 cannot be log-transformed. A common
+    solution to this problem is to set the "log-tansformed value" to a very low
+    number, such as -33.2192809488736. (Under a log2 transform system, this
+    would be the result if the original, non-log2-trasnformed value was
+    0.0000000001.) Such an approach may work for some analyses, but greatly
+    distort the results for others. More importantly, genes with such values
+    need to be excluded from certain analyses, despite possibly being "present"
+    in all datasets.
+    
     @data
             (dict<str:dict<str:int>>)
             The "blank" dictionary containing every gene and for every gene, a
@@ -412,6 +437,7 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
     """
     f = Table_Reader()
     f.Set_Delimiter("\t")
+    invalid = "-33"
     #
     for file_ in file_list:
         # Dataset
@@ -424,16 +450,23 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
         headers = f.Get()
         samples = headers[1:]
         length = len(samples)
+        range_ = range(length)
         ### Body
         while not f.EOF:
             f.Read()
             gene = f[0]
             # Populate
-            data[gene][0] += length # Total count - samples
-            for sample in samples:
-                data[gene][sample] = 1 # Individual samples
-            data_2[gene][0] += 1 # Total count - datasets
-            data_2[gene][dataset] = 1 # Individual datasets
+            flag_any = 0
+            for i in range_:
+                sample = samples[i]
+                value = f[i+1]
+                if value[:3] != invalid:
+                    flag_any += 1
+                    data[gene][sample] = 1 # Individual samples
+            if flag_any:
+                data[gene][0] += flag_any # Total count - samples
+                data_2[gene][0] += 1 # Total count - datasets
+                data_2[gene][dataset] = 1 # Individual datasets
         f.Close()
 
 
