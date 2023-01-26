@@ -260,8 +260,8 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 # Functions ####################################################################
 
-def Normalize_Rows(input_path, input_delim, output_path, output_delim, headers,
-            IDs, normalize, normalize_params):
+def Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
+            normalize, normalize_params):
     """
     """
     PRINT.printP(STR__report_begin)
@@ -330,17 +330,13 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
         return 1
     
     # Validate mandatory inputs
-    input_path = inputs.pop(0) # Input file
-    valid = Validate_FASTA_Folder(input_path)
+    path_in = inputs.pop(0) # Input file
+    valid = Validate_FASTA_Folder(path_in)
     if valid == 1:
-        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__IO_error_read.format(f = path_in))
         PRINT.printE(STR__use_help)
         return 1
-    elif valid == 2:
-        PRINT.printE(STR__error_no_FASTA.format(f = input_path))
-        PRINT.printE(STR__use_help)
-        return 1
-    input_delim_str = inputs.pop(0) # Input delim
+    delim_in_str = inputs.pop(0) # Input delim
     input_delim = Validate_Table_Type(input_delim_str)
     if not input_delim:
         PRINT.printE(STR__invalid_table_format.format(s = input_delim_str))
@@ -353,8 +349,8 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
     normalize = DEFAULT__normalize
     M1 = DEFAULT__M1
     M2 = DEFAULT__M2
-    output_path = ""
-    output_delim = input_delim
+    path_out = ""
+    delim_out = delim_in
     
     # Initial validation
     while inputs:
@@ -385,10 +381,10 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
             else: # "-i"
                 IDs = boolean
         elif arg == "-o":
-            output_path = arg2
-            output_delim = Validate_Table_Type(arg3)
-            if not output_delim:
-                PRINT.printE(STR__invalid_table_format.format(s = output_delim))
+            path_out = arg2
+            delim_out = Validate_Table_Type(arg3)
+            if not delim_out:
+                PRINT.printE(STR__invalid_table_format.format(s = arg3))
                 PRINT.printE(STR__use_help)
                 return 1
         elif arg == "-n":
@@ -410,9 +406,8 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
                     return 1
     
     # Automated output path generation
-    if not output_path:
-        output_path = Generate_Default_Output_Filepath_Norm_Rows(input_filepath,
-                output_delim)
+    if not path_put:
+        path_out = Generate_Default_Output_Filepath_Norm_Rows(path_in, delim_in)
     
     # Validate output path
     valid_out = Validate_Write_Path(path_out)
@@ -425,8 +420,8 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
         return 1
     
     # Run program
-    Normalize_Rows(input_path, input_delim, output_path, output_delim, headers,
-            IDs, normalize, [M1, M2])
+    Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
+            normalize, [M1, M2])
     
     # Safe exit
     if exit_state == 0: return 0
