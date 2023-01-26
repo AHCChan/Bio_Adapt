@@ -21,7 +21,7 @@ values in the data) are the same across all datasets.
 USAGE:
     
     python27 Normalize_Rows.py <input_file> [-o <output_file> <output_format>]
-            [-h <header>] [-i <id>] [-m MEAN|MEDIAN|QUARTILE <m1> [<m2>]]
+            [-h <header>] [-i <id>] [-n MEAN|MEDIAN|QUARTILE <m1> [<m2>]]
 
 
 
@@ -127,14 +127,14 @@ EXAMPLE:
     
     python27 Normalize_Rows.py Path/raw_data.tab tsv -h N -i N
     
-    python27 Normalize_Rows.py Path/data.tab tsv -m MEDIAN 1000
+    python27 Normalize_Rows.py Path/data.tab tsv -n MEDIAN 1000
     
-    python27 Normalize_Rows.py Path/data.tab tsv -m QUARTILE -10 10
+    python27 Normalize_Rows.py Path/data.tab tsv -n QUARTILE -10 10
 
 USAGE:
     
     python27 Normalize_Rows.py <input_file> [-o <output_file> <output_format>]
-            [-h <header>] [-i <id>] [-m MEAN|MEDIAN|QUARTILE <m1> [<m2>]]
+            [-h <header>] [-i <id>] [-n MEAN|MEDIAN|QUARTILE <m1> [<m2>]]
 """
 
 NAME = "Normalize_Rows.py"
@@ -163,9 +163,9 @@ FILEMOD = "__NORMALIZED"
 # Defaults #####################################################################
 "NOTE: altering these will not alter the values displayed in the HELP DOC"
 
-DEFAULT__Header = True
+DEFAULT__headers = True
 DEFAULT__IDs = True
-DEFAULT__Normalize = 1 # MEAN
+DEFAULT__normalize = 1 # MEAN
 DEFAULT__M1 = 0
 DEFAULT__M2 = 0
 
@@ -201,14 +201,30 @@ STR__use_help = "\nUse the -h option for help:\n\tpython "\
 
 
 
+STR__invalid_normalization = """
+ERROR: Invalid normalization method specified: {s}
+Please specify one of the following:
+    Mean
+    Median
+    Quartile"""
+
+STR__specify_number = """
+ERROR: Invalid parameter for normalization: {s}
+Please specify a number."""
+
+STR__need_two_for_quartile = "\nERROR: You need to specify two numbers when "\
+"normalizing by quartile."
+
+
+
 STR__metrics = """
        Total Rows: {A}
     Total Columns: {B}
     
-                {C} {G} {K} {O}
-         Lowest {D} {H} {L} {P}
-        Average {E} {I} {M} {Q}
-        Highest {F} {J} {N} {R}
+            {C} {G} {K} {O}
+     Lowest {D} {H} {L} {P}
+    Average {E} {I} {M} {Q}
+    Highest {F} {J} {N} {R}
 """
 STR__metrics_h1 = "Mean"
 STR__metrics_h1 = "1st Q"
@@ -222,6 +238,11 @@ STR__report_complete = "\nNormalize_Rows successfully finished."
 
 
 # Lists ########################################################################
+
+LIST__mean = ["MEAN", "Mean", "mean", "AVERAGE", "Average", "average"]
+LIST__median = ["MED", "Med", "med", "MEDIAN", "Median", "median"]
+LIST__quartile = ["Q", "q", "QUART", "Quart", "quart", "QUARTILE", "Quartile",
+        "quartile"]
 
 
 
@@ -239,13 +260,14 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 
 # Functions ####################################################################
 
-def Normalize_Rows():
+def Normalize_Rows(input_path, input_delim, output_path, output_delim, headers,
+            IDs, normalize, normalize_params):
     """
     """
     PRINT.printP(STR__report_begin)
     
-    # Get data
-        
+    # 
+    
     PRINT.printP(STR__report_complete)
     
     # Reporting
@@ -270,7 +292,6 @@ def Report_Metrics(metrics):
                 * The highest, average, and lowest 1st quartile values
                 * The highest, average, and lowest medians
                 * The highest, average, and lowest 3rd quartile values
-                
     
     Report_Metrics(list<int>(14)) -> None
     """
@@ -308,22 +329,138 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
-    # Set up rest of the parsing
-    
     # Validate mandatory inputs
+    input_path = inputs.pop(0) # Input file
+    valid = Validate_FASTA_Folder(input_path)
+    if valid == 1:
+        PRINT.printE(STR__IO_error_read_folder)
+        PRINT.printE(STR__use_help)
+        return 1
+    elif valid == 2:
+        PRINT.printE(STR__error_no_FASTA.format(f = input_path))
+        PRINT.printE(STR__use_help)
+        return 1
+    input_delim_str = inputs.pop(0) # Input delim
+    input_delim = Validate_Table_Type(input_delim_str)
+    if not input_delim:
+        PRINT.printE(STR__invalid_table_format.format(s = input_delim_str))
+        PRINT.printE(STR__use_help)
+        return 1
+    
+    # Set up rest of the parsing
+    headers = DEFAULT__headers
+    IDs = DEFAULT__IDs
+    normalize = DEFAULT__normalize
+    M1 = DEFAULT__M1
+    M2 = DEFAULT__M2
+    output_path = ""
+    output_delim = input_delim
     
     # Initial validation
+    while inputs:
+        arg = inputs.pop(0)
+        flag = 0
+        try: # Following arguments
+            if arg in ["-h", "-i", "-n"]:
+                arg2 = inputs.pop(0)
+            elif arg in ["-o"]:
+                arg2 = inputs.pop(0)
+                arg3 = inputs.pop(0)
+            else: # Invalid
+                arg = Strip_X(arg)
+                PRINT.printE(STR__invalid_argument.format(s = arg))
+                PRINT.printE(STR__use_help)
+                return 1
+        except:
+            PRINT.printE(STR__insufficient_inputs)
+            PRINT.printE(STR__use_help)
+            return 1
+        if arg in ["-h", "-i"]:
+            boolean = Validate_Bool(arg2)
+            if boolean == None:
+                PRINT.printE(STR__invalid_bool.format(s = arg2))
+                return 1
+            if arg == "-h":
+                headers = boolean
+            else: # "-i"
+                IDs = boolean
+        elif arg == "-o":
+            output_path = arg2
+            output_delim = Validate_Table_Type(arg3)
+            if not output_delim:
+                PRINT.printE(STR__invalid_table_format.format(s = output_delim))
+                PRINT.printE(STR__use_help)
+                return 1
+        elif arg == "-n":
+            normalize = Validate_Normalization(arg2)
+            if not normalize:
+                PRINT.printE(STR__invalid_normalization.format(s = arg2))
+            M1 = Validate_Number(arg2)
+            if M1 == None:
+                PRINT.printE(STR__specify_number.format(s = arg2))
+                return 1
+            if normalize == NORMALIZE.QUARTILE:
+                try:
+                    arg3 = inputs.pop(0)
+                except:
+                    PRINT.printE(STR__need_two_for_quartile)
+                M2 = Validate_Number(arg3)
+                if M2 == None:
+                    PRINT.printE(STR__specify_number.format(s = arg3))
+                    return 1
     
     # Automated output path generation
+    if not output_path:
+        output_path = Generate_Default_Output_Filepath_Norm_Rows(input_filepath,
+                output_delim)
     
     # Validate output path
+    valid_out = Validate_Write_Path(path_out)
+    if valid_out == 2: return 0
+    if valid_out == 3:
+        PRINT.printE(STR__IO_error_write_forbid)
+        return 1
+    if valid_out == 4:
+        PRINT.printE(STR__IO_error_write_unable)
+        return 1
     
     # Run program
+    Normalize_Rows(input_path, input_delim, output_path, output_delim, headers,
+            IDs, normalize, [M1, M2])
     
     # Safe exit
     if exit_state == 0: return 0
     else:
         return 1
+
+
+
+def Generate_Default_Output_Filepath_Norm_Rows(filepath, delim):
+    """
+    Generate output filepath based on the input filepath and delimiter.
+    
+    Generate_Default_Output_Filepath_Norm_Rows(str, str) -> str
+    """
+    abs_path = os.path.abspath(filepath)
+    dir_path = os.path.dirname(dir_path)
+    file_name = Get_File_Name(filepath)
+    ext = DICT__table_delim_to_ext(delim)
+    return dir_path + "\\" + file_name + "." + ext
+
+def Validate_Normalization(string):
+    """
+    Validates the normalization method specified.
+    Return 0 if it is invalid. Otherwise return the appropriate ENUM:
+        1 - Mean-shift
+        2 - Median-shift
+        3 - Quartile-shift
+    
+    Validate_Normalization(str) -> int
+    """
+    if string in LIST__mean: return NORMALIZE.MEAN
+    if string in LIST__median: return NORMALIZE.MEDIAN
+    if string in LIST__quartile: return NORMALIZE.QUARTILE
+    return 0
 
 
 
