@@ -30,6 +30,9 @@ MANDATORY:
     input_file
         
         The filepath of the input file to be normalized.
+        
+        NOTE: A table file with column headers is acceptable, a table file with
+        header comments is not.
     
     input_format
         
@@ -217,6 +220,10 @@ STR__need_two_for_quartile = "\nERROR: You need to specify two numbers when "\
 
 
 
+STR__invalid_value = "\nERROR: Invalid value: {s}"
+
+
+
 STR__metrics = """
        Total Rows: {A}
     Total Columns: {B}
@@ -227,9 +234,9 @@ STR__metrics = """
     Highest {F} {J} {N} {R}
 """
 STR__metrics_h1 = "Mean"
-STR__metrics_h1 = "1st Q"
-STR__metrics_h1 = "Median"
-STR__metrics_h1 = "3rd Q"
+STR__metrics_h2 = "1st Q"
+STR__metrics_h3 = "Median"
+STR__metrics_h4 = "3rd Q"
 
 STR__report_begin = "\nRunning Normalize_Rows..."
 
@@ -263,18 +270,252 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 def Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
             normalize, normalize_params):
     """
+    Normalize the data so that every row has the same mean, median, or quartile
+    values.
+    
+    @path_in
+            (str - filepath)
+            The filepath of the data table to be normalized.
+            A table file with column headers is acceptable, a table file with
+            header comments is not.
+    @delim_in
+            (str)
+            The delimiter to be used for the input table file. File formats and
+            their corresponding delimiters are as follows:
+                TSV - "\t" (tab character)
+                CSV - ","  (comma character)
+                SSV - " "  (whitespace character)
+    @path_out
+            (str - filepath)
+            The filepath of the file where the output will be written into.
+    @delim_out
+            (str)
+            The delimiter to be used for the output table file. File formats and
+            their corresponding delimiters are as follows:
+                TSV - "\t" (tab character)
+                CSV - ","  (comma character)
+                SSV - " "  (whitespace character)
+    @headers
+            (bool)
+            Whether or not there are column headers in the input file.
+            If there are, they will be excluded from the normalization process
+            and written into the output file as is.
+    @IDs
+            (bool)
+            Whether or not the first column contains data entry IDs.
+            If there are, they will be excluded from the normalization process
+            and written into the output file as is.
+    @normalize
+            (int - ENUM)
+            An integer denoting what kind of normalization should be performed.
+                1 - Mean-shifting
+                2 - Median-shifting
+                3 - Quartile-shifting
+    @normalize_params
+            (list<float>)
+            A list of parameters to be used for the normalization process. When
+            mean-shifting or median-shifting, the first number in this list will
+            be what the mean/median of the data will be shifted to. When
+            quartile shifting, the first and second numbers in this list will be
+            what the 1st and 3rd quartile of each row of data will be shifted
+            to.
+    
+    Normalize_Rows(str, str, str, str, bool, bool, int, list<float>) -> int
     """
     PRINT.printP(STR__report_begin)
     
-    # 
+    # Setup reporting
+    total_lines = 0
+    total_columns = 0
+    means = 0
+    q1s = 0
+    medians = 0
+    q3s = 0
     
+    # Setup file I/O
+    o = open(path_out, "w")
+    f = Table_Reader(path_in)
+    f.Set_Delimiter(delim_in)
+    f.Open()
+    
+    # Column count and indexes
+    f.Read()
+    values = f.Get()
+    total_columns = len(values)
+    if IDs: total_columns = total_columns - 1
+    range_ = range(total_columns)
+    indexes = Get_Indexes(total_columns)
+    f.Close()
+    f.Open()
+    
+    # Headers
+    if headers:
+        f.Read()
+        values = f.Get()
+        sb = delim_out.join(values) + "\n"
+        o.write(sb)
+    
+    # Main loop
+    while not f.End():
+        total_lines += 1
+        # Read
+        f.Read()
+        values = f.Get()
+        # ID
+        if IDs:
+            ID = values[0]
+            values = values[1:]
+        # Convert to floats
+        for i in range_:
+            try:
+                value = float(values[i])
+            except:
+                PRINT.printE(STR__invalid_value.format(s=string))
+                return 1
+            values[i] = value
+        # Metrics
+        mean = sum(values)/total_columns
+        q1, median, q3 = Get_Quartiles_And_Medians(values, indexes)
+        means.append(mean)
+        q1s.append(q1)
+        medians.append(median)
+        q3s.append(q3)
+        # Normalize
+        if normalize == NORMALIZE.MEAN:
+            difference = normalize_params[0] - mean
+            for i in range_:
+                values[i] = values[i] + difference
+        elif normalize == NORMALIZE.MEDIAN:
+            difference = normalize_params[0] - median
+            for i in range_:
+                values[i] = values[i] + difference
+        elif normalize == NORMALIZE.QUARTILE:
+            gradient_goal = normalize_params[1] - normalize_params[0]
+            gradient_real = q3-q1
+            ratio = gradient_goal/gradient_real
+            offset = ratio * q1 - normalize_params[0]
+            for i in range_:
+                values[i] = ratio * values[i] + offset
+    
+    # Close up
+    f.Close()
+    o.close()
     PRINT.printP(STR__report_complete)
     
+    # Calculate
+    table_metrics = Get_Metrics([means, q1s, medians, q3s])
+    
     # Reporting
-    Report_Metrics(metrics)
+    Report_Metrics([total_lines, total_columns] + table_metrics)
     
     # Wrap up
     return 0
+
+
+
+def Get_Indexes(length):
+    """
+    Return the indexes needed to get the 1st quartile value, the median value,
+    and the 3rd quartile value.
+    
+    @length
+            (int)
+            The number of elements in the list.
+    
+    Get_Indexes(int) -> [int, int, int, int, int, int]
+    """
+    max_index = float(length-1)
+    # Median
+    median_1 = (length-1)/2
+    median_2 = length/2
+    # q1
+    q1_index_float = max_index/4
+    q1_index_int = int(q1_index_float)
+    if q1_index_float == q1_index_int:
+        q1_index_1 = q1_index_int
+        q1_index_2 = q1_index_int
+    else:
+        q1_index_1 = q1_index_int
+        q1_index_2 = q1_index_int+1
+    # q3
+    q3_index_float = (max_index*3)/4
+    q3_index_int = int(q3_index_float)
+    if q3_index_float == q3_index_int:
+        q3_index_1 = q3_index_int
+        q3_index_2 = q3_index_int
+    else:
+        q3_index_1 = q3_index_int
+        q3_index_2 = q3_index_int+1
+    # Return
+    return [q1_index_1, q1_index_2, median_1, median_2, q3_index_1, q3_index_2]
+
+
+
+def Get_Quartiles_And_Medians(values, indexes):
+    """
+    Return the 1st quartile value, the median, and the 3rd quartile value of a
+    list of numbers.
+    
+    @values
+            (list<float>)
+            The numbers being analyzed.
+    @indexes
+            (list<int>(6))
+            A precalculated set of indexes. The indexes are used to access the
+            elements in a sorted list of values to calculate the 1st quartile
+            value, the median, and the 3rd quartile value of the list of
+            numbers.
+    
+    Get_Quartiles_And_Medians(list<float>, list<int>(6)) -> list<float>(3)
+    """
+    # Sort
+    values = sorted(values)
+    # q1
+    q1_1 = values[indexes[0]]
+    q1_2 = values[indexes[1]]
+    q1 = (q1_1+q1_2)/2
+    # Median
+    median_1 = values[indexes[2]]
+    median_2 = values[indexes[3]]
+    median = (median_1+median_2)/2
+    # q3
+    q3_1 = values[indexes[4]]
+    q3_2 = values[indexes[5]]
+    q3 = (q3_1+q3_2)/2
+    # Return
+    return [q1, median, q3]
+
+
+
+def Get_Metrics(lists):
+    """
+    Return the lowest, average, and highest value in every list in [lists].
+    
+    @lists
+            (list<list<float>>(4))
+            The lists of values to get the lowest, average, and highest values
+            for.
+    
+    Get_Metrics(list<list<float>>(4)) -> list<float>(12)
+    """
+    length = len(lists[0])
+    results = []
+    for list_ in lists:
+        # Setup
+        lowest = list_[0]
+        highest = list_[0]
+        total = 0
+        # Iterate
+        for value in list_:
+            if value < lowest: lowest = value
+            if value > highest: highest = value
+            total += value
+        average = total/length
+        # Append
+        results.append(lowest)
+        results.append(average)
+        results.append(highest)
+    return results
 
 
 
@@ -295,9 +536,35 @@ def Report_Metrics(metrics):
     
     Report_Metrics(list<int>(14)) -> None
     """
-    # Unpacking
-    # Print
-    pass
+    # Setup
+    length = len(metrics)
+    range_ = range(length)
+    # 
+    for i in range_:
+        value = metrics[i]
+        string = str(value)
+        if i > 1:
+            string = Trim_Percentage_Str(string, 2)
+        metrics[i] = string
+    # Repacking
+    row_and_column = metrics[:2]
+    col_1 = [STR__metrics_h1] + metrics[2:5]
+    col_2 = [STR__metrics_h2] + metrics[5:8]
+    col_3 = [STR__metrics_h3] + metrics[8:11]
+    col_4 = [STR__metrics_h5] + metrics[11:]
+    # Pad
+    row_and_column = Pad_Column(row_and_column, 0, 0, " ", 0)
+    col_1 = Pad_Column(col_1, 0, 0, " ", 0)
+    col_2 = Pad_Column(col_2, 0, 0, " ", 0)
+    col_3 = Pad_Column(col_3, 0, 0, " ", 0)
+    col_4 = Pad_Column(col_4, 0, 0, " ", 0)
+    # Strings
+    PRINT.printM(STR__metrics.format(
+            A = row_and_column[0], B = row_and_column[1],
+            C = col_1[0], D = col_1[1], E = col_1[2], F = col_1[3],
+            G = col_2[0], H = col_2[1], I = col_2[2], J = col_2[3],
+            K = col_3[0], L = col_3[1], M = col_3[2], N = col_3[3],
+            O = col_4[0], P = col_4[1], Q = col_4[2], R = col_4[3]))  
 
 
 
