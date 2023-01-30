@@ -224,14 +224,18 @@ STR__invalid_value = "\nERROR: Invalid value: {s}"
 
 
 
+STR__empty_table_file = "\nERROR: Table file is empty: {s}"
+
+
+
 STR__metrics = """
        Total Rows: {A}
     Total Columns: {B}
     
-            {C} {G} {K} {O}
-     Lowest {D} {H} {L} {P}
-    Average {E} {I} {M} {Q}
-    Highest {F} {J} {N} {R}
+             {C}  {G}  {K}  {O}
+     Lowest  {D}  {H}  {L}  {P}
+    Average  {E}  {I}  {M}  {Q}
+    Highest  {F}  {J}  {N}  {R}
 """
 STR__metrics_h1 = "Mean"
 STR__metrics_h2 = "1st Q"
@@ -327,10 +331,10 @@ def Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
     # Setup reporting
     total_lines = 0
     total_columns = 0
-    means = 0
-    q1s = 0
-    medians = 0
-    q3s = 0
+    means = []
+    q1s = []
+    medians = []
+    q3s = []
     
     # Setup file I/O
     o = open(path_out, "w")
@@ -364,13 +368,14 @@ def Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
         # ID
         if IDs:
             ID = values[0]
+            o.write(ID + delim_out)
             values = values[1:]
         # Convert to floats
         for i in range_:
             try:
                 value = float(values[i])
             except:
-                PRINT.printE(STR__invalid_value.format(s=string))
+                PRINT.printE(STR__invalid_value.format(s=values[i]))
                 return 1
             values[i] = value
         # Metrics
@@ -384,23 +389,30 @@ def Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
         if normalize == NORMALIZE.MEAN:
             difference = normalize_params[0] - mean
             for i in range_:
-                values[i] = values[i] + difference
+                values[i] = str(values[i] + difference)
         elif normalize == NORMALIZE.MEDIAN:
             difference = normalize_params[0] - median
             for i in range_:
-                values[i] = values[i] + difference
+                values[i] = str(values[i] + difference)
         elif normalize == NORMALIZE.QUARTILE:
             gradient_goal = normalize_params[1] - normalize_params[0]
             gradient_real = q3-q1
             ratio = gradient_goal/gradient_real
-            offset = ratio * q1 - normalize_params[0]
+            offset = normalize_params[0] - ratio * q1
             for i in range_:
-                values[i] = ratio * values[i] + offset
-    
+                values[i] = str(ratio * values[i] + offset)
+        # Write
+        sb = delim_out.join(values) + "\n"
+        o.write(sb)
     # Close up
     f.Close()
     o.close()
     PRINT.printP(STR__report_complete)
+    
+    # Empty file
+    if total_lines == 0:
+        PRINT.printE(STR__empty_table_file.format(s=path_in))
+        return 1
     
     # Calculate
     table_metrics = Get_Metrics([means, q1s, medians, q3s])
@@ -551,7 +563,7 @@ def Report_Metrics(metrics):
     col_1 = [STR__metrics_h1] + metrics[2:5]
     col_2 = [STR__metrics_h2] + metrics[5:8]
     col_3 = [STR__metrics_h3] + metrics[8:11]
-    col_4 = [STR__metrics_h5] + metrics[11:]
+    col_4 = [STR__metrics_h4] + metrics[11:]
     # Pad
     row_and_column = Pad_Column(row_and_column, 0, 0, " ", 0)
     col_1 = Pad_Column(col_1, 0, 0, " ", 0)
@@ -598,15 +610,15 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
     
     # Validate mandatory inputs
     path_in = inputs.pop(0) # Input file
-    valid = Validate_FASTA_Folder(path_in)
+    valid = Validate_Read_Path(path_in)
     if valid == 1:
         PRINT.printE(STR__IO_error_read.format(f = path_in))
         PRINT.printE(STR__use_help)
         return 1
     delim_in_str = inputs.pop(0) # Input delim
-    input_delim = Validate_Table_Type(input_delim_str)
-    if not input_delim:
-        PRINT.printE(STR__invalid_table_format.format(s = input_delim_str))
+    delim_in = Validate_Table_Type(delim_in_str)
+    if not delim_in:
+        PRINT.printE(STR__invalid_table_format.format(s = delim_in_str))
         PRINT.printE(STR__use_help)
         return 1
     
@@ -624,9 +636,9 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
         arg = inputs.pop(0)
         flag = 0
         try: # Following arguments
-            if arg in ["-h", "-i", "-n"]:
+            if arg in ["-h", "-i"]:
                 arg2 = inputs.pop(0)
-            elif arg in ["-o"]:
+            elif arg in ["-o", "-n"]:
                 arg2 = inputs.pop(0)
                 arg3 = inputs.pop(0)
             else: # Invalid
@@ -658,26 +670,26 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
             normalize = Validate_Normalization(arg2)
             if not normalize:
                 PRINT.printE(STR__invalid_normalization.format(s = arg2))
-            M1 = Validate_Number(arg2)
+            M1 = Validate_Number(arg3)
             if M1 == None:
-                PRINT.printE(STR__specify_number.format(s = arg2))
+                PRINT.printE(STR__specify_number.format(s = arg3))
                 return 1
             if normalize == NORMALIZE.QUARTILE:
                 try:
-                    arg3 = inputs.pop(0)
+                    arg4 = inputs.pop(0)
                 except:
                     PRINT.printE(STR__need_two_for_quartile)
-                M2 = Validate_Number(arg3)
+                M2 = Validate_Number(arg4)
                 if M2 == None:
-                    PRINT.printE(STR__specify_number.format(s = arg3))
+                    PRINT.printE(STR__specify_number.format(s = arg4))
                     return 1
     
     # Automated output path generation
-    if not path_put:
+    if not path_out:
         path_out = Generate_Default_Output_Filepath_Norm_Rows(path_in, delim_in)
     
     # Validate output path
-    valid_out = Validate_Write_Path(path_out)
+    valid_out = Validate_Write_Path__FILE(path_out)
     if valid_out == 2: return 0
     if valid_out == 3:
         PRINT.printE(STR__IO_error_write_forbid)
@@ -687,8 +699,8 @@ def Parse_Command_Line_Input__Normalize_Rows(raw_command_line_input):
         return 1
     
     # Run program
-    Normalize_Rows(path_in, delim_in, path_out, delim_out, headers, IDs,
-            normalize, [M1, M2])
+    exit_state = Normalize_Rows(path_in, delim_in, path_out, delim_out, headers,
+            IDs, normalize, [M1, M2])
     
     # Safe exit
     if exit_state == 0: return 0
@@ -704,10 +716,10 @@ def Generate_Default_Output_Filepath_Norm_Rows(filepath, delim):
     Generate_Default_Output_Filepath_Norm_Rows(str, str) -> str
     """
     abs_path = os.path.abspath(filepath)
-    dir_path = os.path.dirname(dir_path)
+    dir_path = os.path.dirname(abs_path)
     file_name = Get_File_Name(filepath)
-    ext = DICT__table_delim_to_ext(delim)
-    return dir_path + "\\" + file_name + "." + ext
+    ext = DICT__table_delim_to_ext[delim]
+    return dir_path + "\\" + file_name + FILEMOD + "." + ext
 
 def Validate_Normalization(string):
     """
