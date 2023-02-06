@@ -437,7 +437,8 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
     """
     f = Table_Reader()
     f.Set_Delimiter("\t")
-    invalid = "-33"
+    invalid_1 = "-33"
+    invalid_2 = "\\N"
     #
     for file_ in file_list:
         # Dataset
@@ -460,7 +461,7 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
             for i in range_:
                 sample = samples[i]
                 value = f[i+1]
-                if value[:3] != invalid:
+                if value[:3] != invalid_1 and value[:2] != invalid_2:
                     flag_any += 1
                     data[gene][sample] = 1 # Individual samples
             if flag_any:
