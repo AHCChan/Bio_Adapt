@@ -537,11 +537,8 @@ def Write_Commonality_to_File(data, data_2, gene_list, dataset_list,
     Write_Commonality_to_File(dict, dict, list<str>, list<str>, str) -> None
     """
     # Setup
-    o = open(commonality_file, "w")
-    # Header
-    o.write(STR__commonality_header)
-    o.write("\n")
-    # Iterate
+    results = {}
+    # Iterate over data
     for dataset in dataset_list:
         score_1 = 0
         score_2 = 0
@@ -549,6 +546,16 @@ def Write_Commonality_to_File(data, data_2, gene_list, dataset_list,
             if data_2[gene][dataset] == 1:
                 score_1 += data[gene][0]
                 score_2 += data_2[gene][0]
+        results[dataset] = [score_1, score_2]
+    # Sort
+    order = sorted(results.keys(), key=lambda kv: results[kv][1])
+    # Write - initial
+    o = open(commonality_file, "w")
+    o.write(STR__commonality_header)
+    o.write("\n")
+    # Write - body
+    for dataset in order:
+        score_1, score_2 = results[dataset]
         o.write(dataset + "\t" + str(score_1) + "\t" + str(score_2) + "\n")
     # Close
     o.close()
