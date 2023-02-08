@@ -1,6 +1,6 @@
 HELP_DOC = """
 WORMBASE GENE EXPRESSION GENES OVERLAP REPORT
-(version 1.0)
+(version 2.0)
 by Angelo Chan
 This is a program for taking a folder of Wormbase Gene Expression files and
 generating a report on the genes listed within those files.
@@ -21,12 +21,21 @@ may work for some analyses, but greatly distort the results for others. More
 importantly, genes with such values need to be excluded from certain analyses,
 despite possibly being "present" in all datasets.
 
+Optionally, commonality scores for each dataset can also be generated.
+Commonality scores are calculated as follows:
+        
+  * For each sample, the sample's commonality score is the sum of the
+    commonality scores of all the genes which are present in that sample.
+    
+  * The commonality score for a gene is the number of samples which that gene is
+    present in.
+
 
 
 USAGE:
     
     python27 WB_GE_Genes_Overlap_Report.py <input_folder> [-o <report_file>
-            <universal_file>] [-a <abridge>]
+            <universal_file>] [-a <abridge>] [-c <commonality_file>]
 
 
 
@@ -69,6 +78,11 @@ OPTIONAL:
         
         Whether or not to abridge the results to, for each gene, only how many
         datasets and samples a gene occurs in.
+    
+    commonality_file
+        
+        The filepath of the output file where the commonality scores are output
+        to.
 
 
 
@@ -149,7 +163,9 @@ STR__header_4 = "# Number of universal genes: "
 STR__header_5 = "# The best performing gene is found in this many datasets: "
 STR__header_6 = "# The best performing gene is found in this many samples: "
 
-STR__column_header = "SAMPLE_ID\tTOTAL_DATASETS\tTOTAL_SAMPLES"
+STR__column_header = "GENE_ID\tTOTAL_DATASETS\tTOTAL_SAMPLES"
+
+STR__commonality_header = "DATASET\tSAMPLE_SCORE\tDATASET_SCORE"
 
 
 
@@ -193,7 +209,7 @@ PRINT.PRINT_METRICS = PRINT_METRICS
 # Functions ####################################################################
 
 def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file,
-            abridge_report):
+            abridge_report, commonality_file):
     """
     Summarize the coverage overlap between the different datasets in
     [input_folder]. That is to say, the degree to which genes appear in most or
@@ -231,8 +247,12 @@ def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file,
             (bool)
             Whether or not to abridge the report to just the number of datasets
             and samples a gene is in.
+    @commonality_file
+            (None/str - filepath)
+            The filepath of the output file where the commonality scores are
+            output to.
     
-    WB_GE_Genes_Overlap_Report(str, str, str) -> int
+    WB_GE_Genes_Overlap_Report(str, str, str, bool, str) -> int
     """
     PRINT.printP(STR__report_begin)
     
@@ -277,7 +297,10 @@ def WB_GE_Genes_Overlap_Report(input_folder, report_file, universal_file,
     Write_Summary_to_File(data, data_2, gene_list, dataset_list, sample_list,
             summary_metrics, report_file, abridge_report)
     Write_Shortlist_to_File(data, gene_list, total_samples, universal_file)
-        
+    if commonality_file:
+        Write_Commonality_to_File(data, data_2, gene_list, dataset_list,
+                commonality_file)
+    
     PRINT.printP(STR__report_complete)
     
     # Reporting
@@ -469,6 +492,67 @@ def Populate_With_WB_GE_Data(data, data_2, file_list):
                 data_2[gene][0] += 1 # Total count - datasets
                 data_2[gene][dataset] = 1 # Individual datasets
         f.Close()
+
+
+
+def Write_Commonality_to_File(data, data_2, gene_list, dataset_list,
+            commonality_file):
+    """
+    Generate a commonality score for each dataset, and write those scores to
+    [commonality_file].
+
+    For every gene in, there will be two corresponding dictionaries:
+
+    In the first dictionary:
+        All sample IDs in [file_list] will have an entry, where the key is the
+        sample ID, and the value is a 1 or a 0. 1 if the gene is found in that
+        sample, and a 0 otherwise.
+
+    In the second dictionary:
+        All datasets in [file_list] will have an entry, where the key is the
+        dataset file name, and the value is a 1 or a 0. 1 if the gene is found
+        in that dataset, and a 0 otherwise.
+    
+    @data
+            (dict<str:dict<str:int>>)
+            The dictionary containing every gene and for every gene, a
+            dictionary containing every sample ID corresponding to a value of
+            either 1 or 0. A 1 if the gene is in that sample, and a 0 otherwise.
+    @data_2
+            (dict<str:dict<str:int>>)
+            The dictionary containing every gene and for every gene, a
+            dictionary containing every dataset name corresponding to a value of
+            0. A 1 if the gene is in that sample, and a 0 otherwise.
+    @gene_list
+            (list<str>)
+            A list of all the genes in the data.
+    @dataset_list
+            (list<str>)
+            A list of all the datasets.
+    @commonality_file
+            (None/str - filepath)
+            The filepath of the output file where the commonality scores are
+            output to.
+    
+    Write_Commonality_to_File(dict, dict, list<str>, list<str>, str) -> None
+    """
+    # Setup
+    o = open(commonality_file, "w")
+    # Header
+    o.write(STR__commonality_header)
+    o.write("\n")
+    # Iterate
+    for dataset in dataset_list:
+        score_1 = 0
+        score_2 = 0
+        for gene in gene_list:
+            if data_2[gene][dataset] == 1:
+                score_1 += data[gene][0]
+                score_2 += data_2[gene][0]
+        o.write(dataset + "\t" + str(score_1) + "\t" + str(score_2) + "\n")
+    # Close
+    o.close()
+    return
 
 
 
@@ -756,6 +840,7 @@ def Parse_Command_Line_Input__WB_GE_Genes_Overlap_Report(
     abridge = DEFAULT__Abridge
     path_out_report = ""
     path_out_universal = ""
+    path_out_commonality = None
     
     # Initial validation
     while inputs:
@@ -764,7 +849,7 @@ def Parse_Command_Line_Input__WB_GE_Genes_Overlap_Report(
             if arg in ["-o"]:
                 arg2 = inputs.pop(0)
                 arg3 = inputs.pop(0)
-            elif arg in ["-a"]:
+            elif arg in ["-a", "-c"]:
                 arg2 = inputs.pop(0)
             else: # Invalid
                 arg = Strip_X(arg)
@@ -779,11 +864,13 @@ def Parse_Command_Line_Input__WB_GE_Genes_Overlap_Report(
         if arg == "-o":
             path_out_report = arg2
             path_out_universal = arg3
-        else: #arg == "-a"
+        elif arg == "-a":
             abridge = Validate_Bool(arg2)
             if abridge == None:
                 printE(STR__invalid_bool)
                 return 1
+        else: # arg == "-c"
+            path_out_commonality = arg2
     
     # Automated output path generation
     if not path_out_report: path_out = path_in_folder + FILEMOD_1
@@ -806,10 +893,19 @@ def Parse_Command_Line_Input__WB_GE_Genes_Overlap_Report(
     if valid_out == 4:
         PRINT.printE(STR__IO_error_write_unable)
         return 1
+    if path_out_commonality:
+        valid_out = Validate_Write_Path__FILE(path_out_commonality)
+        if valid_out == 2: return 0
+        if valid_out == 3:
+            PRINT.printE(STR__IO_error_write_forbid)
+            return 1
+        if valid_out == 4:
+            PRINT.printE(STR__IO_error_write_unable)
+            return 1
     
     # Run program
     exit_state = WB_GE_Genes_Overlap_Report(path_in, path_out_report,
-            path_out_universal, abridge)
+            path_out_universal, abridge, path_out_commonality)
     
     # Safe exit
     if exit_state == 0: return 0
