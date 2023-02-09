@@ -20,8 +20,9 @@ values in the data) are the same across all datasets.
 
 USAGE:
     
-    python27 Normalize_Rows.py <input_file> [-o <output_file> <output_format>]
-            [-h <header>] [-i <id>] [-n MEAN|MEDIAN|QUARTILE <m1> [<m2>]]
+    python27 Normalize_Rows.py <input_file> <input_format> [-o <output_file>
+            <output_format>] [-h <header>] [-i <id>] [-n MEAN|MEDIAN|QUARTILE
+            <m1> [<m2>]]
 
 
 
@@ -136,8 +137,9 @@ EXAMPLE:
 
 USAGE:
     
-    python27 Normalize_Rows.py <input_file> [-o <output_file> <output_format>]
-            [-h <header>] [-i <id>] [-n MEAN|MEDIAN|QUARTILE <m1> [<m2>]]
+    python27 Normalize_Rows.py <input_file> <input_format> [-o <output_file>
+            <output_format>] [-h <header>] [-i <id>] [-n MEAN|MEDIAN|QUARTILE
+            <m1> [<m2>]]
 """
 
 NAME = "Normalize_Rows.py"
