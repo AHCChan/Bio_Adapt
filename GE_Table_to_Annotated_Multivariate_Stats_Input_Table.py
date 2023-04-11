@@ -1,6 +1,6 @@
 HELP_DOC = """
 GENE EXPRESSION TABLE TO ANNOTATED MULTIVARIATE STATISTICS INPUT TABLE
-(version 1.0)
+(version 1.1)
 by Angelo Chan
 This is a program for taking a folder of Gene Expression table files, combining
 them, transposing it (swapping the X and Y axes), optionally adding annotations
@@ -175,6 +175,14 @@ STR__error_no_GE = "\nERROR: No files containing the file idenfier string: \n\t 
 
 STR__error_annotate_file_inconsistent = "\nERROR: Annotation file does not "\
 "contain a consistent number of columns."
+
+STR__error_missing_value = """
+ERROR: Missing value(s). At least one of the genes specified in the shortlisted
+genes file could not be found in at least one of the gene expression tables in
+the input folder.
+
+Blanks have been used when values were missing.    
+"""
 
 
 
@@ -431,6 +439,7 @@ def Write_GE_Data(file_list, file_delimiter, gene_list, annotations,
     f = Table_Reader()
     f.Set_Delimiter(file_delimiter)
     gene_set = set(gene_list)
+    flag_missing = False
     # Write - header
     if header:
         o.write(annotations[0])
@@ -483,12 +492,17 @@ def Write_GE_Data(file_list, file_delimiter, gene_list, annotations,
                 o.write(annotation)
                 sb = ""
                 for gene in gene_list:
-                    sb += "\t" + data[i][gene]
+                    value = data[i].get(gene, "")
+                    if not value: flag_missing = True
+                    sb += "\t" + value
                 o.write(sb)
                 o.write("\n")
         # Other metrics
         n_datasets += 1
         n_samples += length
+    # Report missing value
+    if flag_missing:
+        PRINT.printE(STR__error_missing_value)
     # Return metrics
     return [n_datasets, n_samples, n_genes, n_annotated, n_unannotated,
             n_written]
