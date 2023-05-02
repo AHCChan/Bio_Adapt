@@ -2,6 +2,7 @@ HELP_DOC = """
 GENE EXPRESSION TABLE TO ANNOTATED MULTIVARIATE STATISTICS INPUT TABLE
 (version 1.1)
 by Angelo Chan
+
 This is a program for taking a folder of Gene Expression table files, combining
 them, transposing it (swapping the X and Y axes), optionally adding annotations
 from an annotation file.
