@@ -527,6 +527,11 @@ def Report_Metrics(metrics):
     
     Report_Metrics(list<int>(6)) -> None
     """
+    # Strings
+    metrics = [str(i) for i in metrics]
+    # Pad
+    max_size = Get_Max_Len(metrics)
+    metrics = Pad_Column(metrics, max_size, 0, " ", 0)
     # Unpacking
     datasets = metrics[0]
     samples = metrics[1]
@@ -600,7 +605,7 @@ def Parse_Command_Line_Input__Consolidate_GE_Files(raw_command_line_input):
     path_annotations = ""
     path_out = ""
     header = DEFAULT__Header
-    annotated_only = DEFAULT__Annotated_Only  
+    annotated_only = DEFAULT__Annotated_Only
     
     # Validate optional inputs (except output path)
     while inputs:
