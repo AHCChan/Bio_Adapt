@@ -47,6 +47,7 @@ which this program needs to run.
 You can simply open the files:
     File_Reader.py
     FASTA_File_Reader.py
+    Table_File_Reader.py
     File_Writer.py
     Width_File_Writer.py
     _Command_Line_Parser.py
