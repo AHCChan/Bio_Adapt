@@ -65,10 +65,6 @@ Supporting files are available at:
 
 INSTRUCTIONS (HOW TO USE)
 
-You don't need to know how to use git to use this program. You can simply open
-the Python files in your online browser and copy their contents into a local 
-file on your computer with the same name.
-
 To run the program, open up a command line window and enter one of the 
 following commands (substituting the appropriate file paths) to bring up the 
 relevant help doc:
