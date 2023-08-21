@@ -191,7 +191,7 @@ STR__metrics = """
 
 STR__convert_begin = "\nRunning GTF_to_BED..."
 
-STR__convert_complete = "\nWB_GE_Genes_Overlap_Report successfully finished."
+STR__convert_complete = "\nGTF_to_BED successfully finished."
 
 
 
