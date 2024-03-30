@@ -635,14 +635,14 @@ def Parse_Command_Line_Input__Consolidate_GE_Files(raw_command_line_input):
         elif arg == "-h":
             valid = Validate_Bool(arg2)
             if valid == None:
-                PRINT.printE(STR__invalid_arg_for_flag.format("-h"))
+                PRINT.printE(STR__invalid_arg_for_flag.format(s = "-h"))
                 PRINT.printE(STR__use_help)
                 return 1
             header = valid
         else: #arg == "-b"
             valid = Validate_Bool(arg2)
             if valid == None:
-                PRINT.printE(STR__invalid_arg_for_flag.format("-b"))
+                PRINT.printE(STR__invalid_arg_for_flag.format(s = "-b"))
                 PRINT.printE(STR__use_help)
                 return 1
             annotation_only = valid
