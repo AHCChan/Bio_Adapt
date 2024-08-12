@@ -154,6 +154,10 @@ from Table_File_Reader import *
 
 # Strings ######################################################################
 
+STR__BED_header = "chr\tstart\tend"
+
+
+
 STR__use_help = "\nUse the -h option for help:\n\t python "\
 "BED__Postmerge_Uncollapse_Combine_Replicates.py -h"
 
@@ -161,6 +165,7 @@ STR__use_help = "\nUse the -h option for help:\n\t python "\
 
 STR__invalid_column_number = """
 ERROR: Invalid column number: {s}
+Raw text: {t}
 Please specify positive integers which correspond to column numbers which exist
 in the main input file."""
 
@@ -230,25 +235,124 @@ def Combine_Replicates(path_in, path_groups, paths_out):
     count_unique_all = 0
     
     # Get groups
-    groups_dict = Get_Groups_Dict(path_groups)
+    processed_groups = Process_Groups(path_groups)
+    if processed_groups == None: return 1
+    groups_list, groups_dict, empty_dicts_dict, lengths_dict = processed_groups
     
     # I/O setup
     f = Table_Reader()
     f.Set_New_Path(path_in)
     f.Set_Delimiter("\t")
-    f.Open()
     f.Close()
-    outputs = Setup_Outputs(paths_out, groups_dict)
+            
+    header_str = STR__BED_header
+    for group in groups_list:
+        header_str += "\t" + group
+    header_str += "\n"
+    outputs = Setup_Outputs(paths_out, groups_dict, header_str)
     
     # Main loop
     f.Open()
     while not f.EOF:
         f.Read()
+        values = f.Get()
         count_rows += 1
-        # Main loop logic
+        # Flags, totals and tallies, for ALL
+        flag_all_p = False
+        flag_all_a = True
+        dict_preset = {}
+        dict_all = {}
+        dict_total = {}
+        dict_avgs = {}
+        groups_present = 0
+        last_group_present = ""
+        last_str = ""
+        # Per group
+        for group in groups_list:
+            # Flags, totals and tallies, per group
+            flag_p = False
+            flag_a = True
+            total = 0
+            col_nos = groups_dict[group]
+            # Sb
+            sb = ""
+            # Go over all replicates
+            for col in col_nos:
+                string = values[col]
+                # Stringbuilder
+                sb += "\t" + string
+                # Counts and flags
+                number = int(string)
+                if number:
+                    flag_p = True
+                    total += number
+                else:
+                    flag_1 = False
+            # For individuals
+            dict_total[group] = total
+            avg = total/lengths_dict[group]
+            dict_avgs[group] = avg
+            # For ALL
+            if flag_p:
+                flag_all_p = True
+                groups_present += 1
+                last_group_present = group
+                last_str = sb
+            if not flag_a:
+                flag_all_a = False
+            else:
+                present_a += 1
+        # Stringbuilder
+        coords = values[:3]
+        sb = "\t".join(coords)
+        sb_present = sb
+        sb_all = sb
+        sb_total = sb
+        sb_avg = sb
+        for group in groups_list:
+            present = dict_present[group]
+            sb_present += "\t" + present
+            all_ = dict_all[group]
+            sb_all += "\t" + all_
+            total = dict_total[group]
+            sb_total += "\t" + str(total)
+            avg = dict_avg[group]
+            sb_avg += "\t" + str(count)
+        sb_present += "\n"
+        sb_all += "\n"
+        sb_total += "\n"
+        sb_avg += "\n"
+        # Write
+        outputs[0][0].write(sb_present)
+        outputs[0][1].write(sb_all)
+        outputs[0][2].write(sb_total)
+        outputs[0][3].write(sb_avg)
+        if flag_all_p:
+            count_universal_one += 1
+            outputs[1][0].write(sb_raw)
+            outputs[1][2].write(sb_total)
+            outputs[1][3].write(sb_avg)
+        if flag_all_a:
+            count_universal_all += 1
+            outputs[1][1].write(sb_raw)
+        if groups_present == 1:
+            count_unique_one += 1
+            sb_unique = sb + last_str + "\n"
+            outputs[2][0][group].write(sb_unique)
+            outputs[2][2][group].write(sb_unique)
+            outputs[2][3][group].write(sb_unique)
+            if dict_all[group] == 1:
+                count_unique_all += 1
+                outputs[2][1][group].write(sb_unique)
     
     # Finish
     f.Close()
+    for i in outputs[:2]:
+        for j in i:
+            j.close()
+    for j in outputs[2]:
+        for group in groups_list:
+            j[group].close()
     PRINT.printP(STR__combine_complete)
     
     # Reporting
@@ -257,6 +361,121 @@ def Combine_Replicates(path_in, path_groups, paths_out):
     
     # Wrap up
     return 0
+
+
+
+def Process_Groups(path_groups):
+    """
+    Process a "groups" file to obtain the relevant data for the analysis.
+    Return a list of all the groups, a dictionary of all the column numbers
+    (computational, 0-indexed column numbers) for each group, and a dictionary
+    which contains, for each group, a dictionary with all the column numbers as
+    keys, and 0 as values. Also return a dictionary giving the number of columns
+    for each group.
+    
+    Return None if there is an invalid column number.
+
+    Ex.
+        A groups file will the following:
+            Control 1,2,5
+            Treatment   3,4,6
+        Will produce:
+            ["Control", "Treatment"]
+            {"Control": [3,4,7], "Treatment": [5,6,8]}
+            {"Control": {3:0, 4:0, 7:0}, "Treatment": {5:0, 6:0, 8:0}}
+            {"Control": 3.0, "Treatment": 3.0}
+
+    @paths_groups
+            (str - filepath)
+            The filepath of the TSV file specifying which columns belong to
+            which experimental groups.
+    
+    Process_Groups(str) -> [[list<str>, dict<str:<list<int>>>,
+            dict<str<dict<int:int>>>, dict<str:float>]
+    Process_Groups(str) -> None
+    """
+    # Output setup
+    groups_list = []
+    groups_dict = {}
+    empty_dicts_dict = {}
+    lengths_dict = {}
+    
+    # I/O setup
+    f = Table_Reader()
+    f.Set_New_Path(path_in)
+    f.Set_Delimiter("\t")
+
+    # Main loop
+    f.Open()
+    while not f.EOF:
+        f.Read()
+        # Process raw
+        name = f[0]
+        cols_raw = f[1]
+        cols_str = cols.split(",")
+        cols_str = [s.strip(" ") for s in cols_str]
+        cols = []
+        for s in cols_str:
+            try:
+                i = int(s)
+            except:
+                PRINT.printE(STR__invalid_column_number.format(s=i, t=cols_raw))
+                return None
+            cols.append(i)
+        cols = [i+2 for i in cols]
+        # Output
+        lengths_dict[name] = float(len(cols))
+        groups_list.append(name)
+        groups_dict[name] = cols
+        temp = {}
+        for i in cols:
+            temp[i] = 0
+        empty_dicts_dict[name] = temp
+    f.Close()
+    
+    # Return
+    return [groups_list, groups_dict, empty_dicts_dict, lengths_dict]
+
+def Setup_Outputs(paths_out, groups_dict, header_str):
+    """
+    Setup all the necessary output files.
+    
+    TODO
+    """
+    result = []
+    # MAIN and ALL
+    for i in paths_out[:2]:
+        temp = []
+        for j in i:
+            file_writer = open(j, "w")
+            file_writer.write(header_str)
+            temp.append(file_writer)
+        result.append(temp)
+    # UNIQUE
+    uniques = []
+    for j in paths_out[2]:
+        temp = {}
+        for group in groups_dict:
+            file_path = j + "\\" + group + ".bed"
+            file_writer = open(file_path, "w")
+            temp[group] = file_writer
+        uniques.append(temp)
+    # Return
+    result.append(uniques)
+
+def Report_Metrics(summary_metrics):
+    """
+    Print a report into the command line interface of the metrics of the
+    operation.
+    
+    @summary_metrics
+            (list<int>)
+            A list of summary metrics for the data, including:
+            TODO
+    
+    Report_Metrics() -> None
+    """
+    pass
 
 
 
@@ -288,7 +507,7 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
-    # Validate mandatory inputs
+    # Validate mandatory inputs (file I/O)
     path_in = inputs.pop(0)
     valid = Validate_Read_Path(path_in)
     if valid == 1:
@@ -302,8 +521,30 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     
-    # Set up rest of the parsing
+    # Validate mandatory inputs (file contents)
+    groups = Process_Groups(path_groups)
+    if testing == None:
+        PRINT.printE(STR__use_help)
+        return 1
+    names, void, void = groups
     
+    # Set up rest of the parsing
+    paths_out = []
+    for i in [FILEMOD__MAIN, FILEMOD__ALL, FILEMOD__UNIQUE]:
+        temp = []
+        for j in [FILEMOD__P, FILEMOD__A, FILEMOD__T, FILEMOD__M]:
+            path_temp = Generate_Default_Output_File_Path_From_File(path_in, j,
+                    True)
+            temp.append(path_temp)
+        paths_out.append(temp)
+    for i in [FILEMOD__UNIQUE]:
+        temp = []
+        base_path = Generate_Default_Output_Folder_Path(path_in)
+        for j in [FILEMOD__P, FILEMOD__A, FILEMOD__T, FILEMOD__M]:
+            path_temp = base_path + j
+            temp.append(path_temp)
+        paths_out.append(temp)
+    Generate_Default_Output_Folder_Path
     
     # Validate optional inputs (except output path)
     while inputs:
@@ -325,17 +566,53 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
             PRINT.printE(STR__use_help)
             return 1
         if arg == "-m":
-            pass
-        if arg == "-a":
-            pass
+            paths_out[0] = [arg2, arg3, arg4, arg5]
+        elif arg == "-a":
+            paths_out[1] = [arg2, arg3, arg4, arg5]
         else: # arg == "-u"
-            path_out_s = arg2
+            paths_out[2] = [arg2, arg3, arg4, arg5]
     
     # Validate output paths
-    
+    for i in paths_out[:2]:
+        for j in i:
+            valid_out = Validate_Write_Path__FILE(j)
+            if valid_out == 2: return 0
+            if valid_out == 3:
+                printE(STR__IO_error_write_forbid)
+                return 1
+            if valid_out == 4:
+                printE(STR__In_error_write_unable)
+                return 1
+    for i in [paths_out[2]]:
+        for j in i:
+            valid_folder = Validate_Write_Path__FOLDER(j)
+            if valid_out == 0: pass
+            elif valid_out == 1: PRINT.printM(STR__overwrite_accept)
+            else:
+                if valid_out == 2:
+                    PRINT.printE(STR__IO_error_write_folder_cannot)
+                elif valid_out == 3: PRINT.printE(STR__overwrite_decline)
+                elif valid_out == 4:
+                    PRINT.printE(STR__IO_error_write_folder_forbid)
+                elif valid_out == 5:
+                    PRINT.printE(STR__IO_error_write_folder_nonexistent)
+                elif valid_out == 6: PRINT.printE(STR__read_file_invalid)
+                elif valid_out == 7:
+                    PRINT.printE(STR__IO_error_write_unexpected)
+                return 1
+            for name in names:
+                file_path = j + "\\" + name + ".bed"
+                valid_out = Validate_Write_Path__FILE(file_path)
+                if valid_out == 2: return 0
+                if valid_out == 3:
+                    printE(STR__IO_error_write_forbid)
+                    return 1
+                if valid_out == 4:
+                    printE(STR__In_error_write_unable)
+                    return 1
     
     # Run program
-    exit_state = Uncollapse_BED(path_in, path_groups, [])
+    exit_state = Uncollapse_BED(path_in, path_groups, paths_out)
     
     # Exit
     if exit_state == 0: return 0
@@ -343,7 +620,7 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
 
 
     
-def Validate_Write_Path(filepath):
+def Validate_Write_Path__FILE(filepath):
     """
     Validates the filepath of the input file.
     Return 0 if the filepath is writtable.
@@ -377,6 +654,61 @@ def Validate_Write_Path(filepath):
         return 0 # Overwriting existing file is possible
     except:
         return 4 # Unable to write to specified filepath
+
+def Validate_Write_Path__FOLDER(folder_path):
+    """
+    Validates the writepath of the output folder.
+    Attempts to create the folder if it does not exist.
+    
+    Return 0 if the folder path is valid and empty and can be written into.
+    Return 1 if the folder path is valid and the user decides to overwrite
+            existing files.
+    Return 2 if the folder path is valid and empty but cannot be written into.
+    Return 3 if the folder path is valid and the user declines to overwrite
+            existing files.
+    Return 4 if the folder path is valid, but contains existing files and the
+            program is set to forbid overwriting.
+    Return 5 is the folder path does not exist and cannot be created.
+    Return 6 for unexpected errors.
+    
+    Validate_Folder_Path(str, str) -> int
+    """
+    new_dir = False
+    # Create folder if it does not exist
+    if not os.path.isdir(folder_path):
+        try:
+            os.mkdir(folder_path)
+        except:
+            return 5
+        new_dir = True
+    
+    # Create a random file for testing purposes
+    random_name = str(Random.random())
+    random_path = folder_path + "\\" + random_name
+    while os.path.exists(random_path):
+        random_name = str(Random.random())
+        random_path = folder_path + "\\" + random_name
+    # Attempt to write to the folder
+    try:
+        f = open(random_path, "w")
+    except:
+        return 2
+    # Unexpected errors
+    try:
+        f.close()
+        os.remove(random_path)
+    except:
+        return 6
+    
+    if new_dir: return 0
+    
+    # OVERWRITE TESTING
+    FLAG_exists = 0
+    if WRITE_PREVENT: return 4
+    if WRITE_CONFIRM:
+        confirm = raw_input(STR__overwrite_confirm_2.format(f=folder_path))
+        if confirm not in LIST__yes: return 3        
+    return 1
 
 
 
