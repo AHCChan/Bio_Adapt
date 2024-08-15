@@ -113,7 +113,7 @@ USAGE:
             <output_path_uniques_t> <output_path_uniques_m>]
 """
 
-NAME = "BED__Postmerge_Uncollapse.py"
+NAME = "BED__Postmerge_Uncollapse_Combine_Replicates.py"
 
 
 
@@ -122,7 +122,7 @@ NAME = "BED__Postmerge_Uncollapse.py"
 AUTORUN = True
 
 WRITE_PREVENT = False # Completely prevent overwritting existing files
-WRITE_CONFIRM = True # Check to confirm overwritting existing files
+WRITE_CONFIRM = False # Check to confirm overwritting existing files
 
 PRINT_ERRORS = True
 PRINT_PROGRESS = True
@@ -149,6 +149,8 @@ import _Controlled_Print as PRINT
 from _Command_Line_Parser import *
 
 from Table_File_Reader import *
+
+import random as Random
 
 
 
@@ -190,6 +192,13 @@ STR__metrics = """
 STR__combine_begin = "\nRunning Combine_Replicates..."
 
 STR__combine_complete = "\nCombine_Replicates successfully finished."
+
+
+
+STR__overwrite_confirm_2 = """
+Files may exist in destination folder:
+    {f}
+Do you wish to overwrite them in the event of a naming clash? (y/n): """
 
 
 
@@ -258,9 +267,9 @@ def Combine_Replicates(path_in, path_groups, paths_out):
         values = f.Get()
         count_rows += 1
         # Flags, totals and tallies, for ALL
-        flag_all_p = False
+        flag_all_p = True
         flag_all_a = True
-        dict_preset = {}
+        dict_present = {}
         dict_all = {}
         dict_total = {}
         dict_avgs = {}
@@ -287,21 +296,28 @@ def Combine_Replicates(path_in, path_groups, paths_out):
                     flag_p = True
                     total += number
                 else:
-                    flag_1 = False
+                    flag_a = False                
             # For individuals
             dict_total[group] = total
             avg = total/lengths_dict[group]
             dict_avgs[group] = avg
-            # For ALL
+            # Update dicts
             if flag_p:
-                flag_all_p = True
+                dict_present[group] = 1
+                #
                 groups_present += 1
                 last_group_present = group
                 last_str = sb
-            if not flag_a:
-                flag_all_a = False
             else:
-                present_a += 1
+                flag_all_p = False
+                #
+                dict_present[group] = 0
+            if flag_a:
+                dict_all[group] = 1
+            else:
+                flag_all_a = False
+                #
+                dict_all[group] = 0
         # Stringbuilder
         coords = values[:3]
         sb = "\t".join(coords)
@@ -311,13 +327,13 @@ def Combine_Replicates(path_in, path_groups, paths_out):
         sb_avg = sb
         for group in groups_list:
             present = dict_present[group]
-            sb_present += "\t" + present
+            sb_present += "\t" + str(present)
             all_ = dict_all[group]
-            sb_all += "\t" + all_
+            sb_all += "\t" + str(all_)
             total = dict_total[group]
             sb_total += "\t" + str(total)
-            avg = dict_avg[group]
-            sb_avg += "\t" + str(count)
+            avg = dict_avgs[group]
+            sb_avg += "\t" + str(avg)
         sb_present += "\n"
         sb_all += "\n"
         sb_total += "\n"
@@ -327,23 +343,30 @@ def Combine_Replicates(path_in, path_groups, paths_out):
         outputs[0][1].write(sb_all)
         outputs[0][2].write(sb_total)
         outputs[0][3].write(sb_avg)
-        if flag_all_p:
+        if flag_all_p: # Main
             count_universal_one += 1
-            outputs[1][0].write(sb_raw)
+            outputs[1][0].write(sb_present)
             outputs[1][2].write(sb_total)
             outputs[1][3].write(sb_avg)
-        if flag_all_a:
+        if flag_all_a: # All
             count_universal_all += 1
-            outputs[1][1].write(sb_raw)
-        if groups_present == 1:
+            outputs[1][1].write(sb_all)
+        if groups_present == 1: # Unique
             count_unique_one += 1
+            group = last_group_present # The last one to be present
+            # Reiterating the data
             sb_unique = sb + last_str + "\n"
             outputs[2][0][group].write(sb_unique)
-            outputs[2][2][group].write(sb_unique)
-            outputs[2][3][group].write(sb_unique)
             if dict_all[group] == 1:
                 count_unique_all += 1
                 outputs[2][1][group].write(sb_unique)
+            # Individual totals and averages
+            total = dict_total[group]
+            sb_unique_total = sb + "\t" + str(total) + "\n"
+            avg = dict_avgs[group]
+            sb_unique_avg = sb + "\t" + str(avg) + "\n"
+            outputs[2][2][group].write(sb_unique_total)
+            outputs[2][3][group].write(sb_unique_avg)
     
     # Finish
     f.Close()
@@ -402,7 +425,7 @@ def Process_Groups(path_groups):
     
     # I/O setup
     f = Table_Reader()
-    f.Set_New_Path(path_in)
+    f.Set_New_Path(path_groups)
     f.Set_Delimiter("\t")
 
     # Main loop
@@ -412,7 +435,7 @@ def Process_Groups(path_groups):
         # Process raw
         name = f[0]
         cols_raw = f[1]
-        cols_str = cols.split(",")
+        cols_str = cols_raw.split(",")
         cols_str = [s.strip(" ") for s in cols_str]
         cols = []
         for s in cols_str:
@@ -460,8 +483,9 @@ def Setup_Outputs(paths_out, groups_dict, header_str):
             file_writer = open(file_path, "w")
             temp[group] = file_writer
         uniques.append(temp)
-    # Return
     result.append(uniques)
+    # Return
+    return result
 
 def Report_Metrics(summary_metrics):
     """
@@ -523,25 +547,26 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
     
     # Validate mandatory inputs (file contents)
     groups = Process_Groups(path_groups)
-    if testing == None:
+    if groups == None:
         PRINT.printE(STR__use_help)
         return 1
-    names, void, void = groups
+    names, void, void, void = groups
     
     # Set up rest of the parsing
     paths_out = []
-    for i in [FILEMOD__MAIN, FILEMOD__ALL, FILEMOD__UNIQUE]:
+    for i in [FILEMOD__MAIN, FILEMOD__ALL]:
         temp = []
         for j in [FILEMOD__P, FILEMOD__A, FILEMOD__T, FILEMOD__M]:
-            path_temp = Generate_Default_Output_File_Path_From_File(path_in, j,
-                    True)
+            mod = i + j
+            path_temp = Generate_Default_Output_File_Path_From_File(path_in,
+                    mod, True)
             temp.append(path_temp)
         paths_out.append(temp)
     for i in [FILEMOD__UNIQUE]:
         temp = []
         base_path = Generate_Default_Output_Folder_Path(path_in)
         for j in [FILEMOD__P, FILEMOD__A, FILEMOD__T, FILEMOD__M]:
-            path_temp = base_path + j
+            path_temp = base_path + i + j
             temp.append(path_temp)
         paths_out.append(temp)
     Generate_Default_Output_Folder_Path
@@ -578,10 +603,10 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
             valid_out = Validate_Write_Path__FILE(j)
             if valid_out == 2: return 0
             if valid_out == 3:
-                printE(STR__IO_error_write_forbid)
+                PRINT.printE(STR__IO_error_write_forbid)
                 return 1
             if valid_out == 4:
-                printE(STR__In_error_write_unable)
+                PRINT.printE(STR__In_error_write_unable)
                 return 1
     for i in [paths_out[2]]:
         for j in i:
@@ -605,14 +630,14 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
                 valid_out = Validate_Write_Path__FILE(file_path)
                 if valid_out == 2: return 0
                 if valid_out == 3:
-                    printE(STR__IO_error_write_forbid)
+                    PRINT.printE(STR__IO_error_write_forbid)
                     return 1
                 if valid_out == 4:
-                    printE(STR__In_error_write_unable)
+                    PRINT.printE(STR__In_error_write_unable)
                     return 1
     
     # Run program
-    exit_state = Uncollapse_BED(path_in, path_groups, paths_out)
+    exit_state = Combine_Replicates(path_in, path_groups, paths_out)
     
     # Exit
     if exit_state == 0: return 0
