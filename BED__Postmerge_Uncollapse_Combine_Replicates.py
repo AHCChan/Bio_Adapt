@@ -413,9 +413,9 @@ def Process_Groups(path_groups):
             The filepath of the TSV file specifying which columns belong to
             which experimental groups.
     
+    Process_Groups(str) -> None
     Process_Groups(str) -> [[list<str>, dict<str:<list<int>>>,
             dict<str<dict<int:int>>>, dict<str:float>]
-    Process_Groups(str) -> None
     """
     # Output setup
     groups_list = []
@@ -461,9 +461,23 @@ def Process_Groups(path_groups):
 
 def Setup_Outputs(paths_out, groups_dict, header_str):
     """
-    Setup all the necessary output files.
+    Setup all the necessary output files and organize them into nested lists and
+    dictionaries which can be systematically accessed.
     
-    TODO
+    @paths_out
+            (list<list<str>> - 8x filepaths, 4x dirpaths)
+            Nested lists, containing the output filepaths and dirpaths.
+    @groups_dict
+            (dict<str:list<int>>)
+            A dictionary containing the names of each group as the keys, and the
+            corresponding column numbers as values.
+    @header_str
+            (str)
+            The column headers of the first three columns of a BED file. The
+            [header_str] is written directly to some input files.
+    
+    Setup_Outputs(list<list<str>>, dict<str:list<int>>, str) -> [list<file>,
+            list<file>, list<dict<str:file>>]
     """
     result = []
     # MAIN and ALL
@@ -495,11 +509,40 @@ def Report_Metrics(summary_metrics):
     @summary_metrics
             (list<int>)
             A list of summary metrics for the data, including:
-            TODO
+                - The number of rows in the input file
+                - The number of genetic elements present in all groups, in at
+                        least one replicate per group
+                - The number of genetic elements present in all groups, in all
+                        replicates for that group
+                - The number of genetic elements present in exactly one group,
+                        in at least one replicate per group
+                - The number of genetic elements present in exactly one group,
+                        in all replicates for that group
+                
+    count_rows = 0
+    count_universal_one = 0
+    count_universal_all = 0
+    count_unique_one = 0
+    count_unique_all = 0
     
     Report_Metrics() -> None
     """
-    pass
+    # Strings
+    metric_strs = [str(i) for i in summary_metrics]
+    # Pad
+    lengths = [len(s) for s in metric_strs]
+    max_len = max(lengths)
+    metric_strs_padded = [Pad_Str(s , max_len, " " , 0) for s in metric_strs]
+    # Unpack
+    count_rows = metric_strs_padded[0]
+    count_universal_one = metric_strs_padded[1]
+    count_universal_all = metric_strs_padded[2]
+    count_unique_one = metric_strs_padded[3]
+    count_unique_all = metric_strs_padded[4]
+    # Print
+    PRINT.printM(STR__metrics.format(A = count_rows, B = count_universal_one,
+            C = count_universal_all, D = count_unique_one,
+            E = count_unique_all))
 
 
 
