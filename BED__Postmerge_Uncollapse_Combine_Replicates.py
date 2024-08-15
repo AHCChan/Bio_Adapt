@@ -122,7 +122,7 @@ NAME = "BED__Postmerge_Uncollapse_Combine_Replicates.py"
 AUTORUN = True
 
 WRITE_PREVENT = False # Completely prevent overwritting existing files
-WRITE_CONFIRM = False # Check to confirm overwritting existing files
+WRITE_CONFIRM = True # Check to confirm overwritting existing files
 
 PRINT_ERRORS = True
 PRINT_PROGRESS = True
