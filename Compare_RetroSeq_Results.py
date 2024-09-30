@@ -774,7 +774,7 @@ def Compare_RetroSeq_Results__LIST(baseline_file, calls_files, list_of_chrs,
     # Header (2)
     while extras > 0:
         headers.append("#")
-        headers -= 1
+        extras -= 1
     for f in calls_files:
         filename = Get_File_Name(f)
         headers.append(filename)
