@@ -1030,7 +1030,7 @@ def Parse_Command_Line_Input__Compare_RetroSeq_Results(raw_command_line_input):
         PRINT.printE(STR__use_help)
         return 1
     elif valid == 2:
-        PRINT.printE(STR__error_no_VCF.format(f = path_in_folder))
+        PRINT.printE(STR__error_no_VCF.format(D = path_in_folder))
         PRINT.printE(STR__use_help)
         return 1
     #
@@ -1133,9 +1133,9 @@ def Validate_VCF_Folder(dirpath):
         os.listdir(dirpath)
         files = Get_Files_W_Extensions(dirpath, LIST__VCF)
         if len(files) > 0: return 0
-        return 1
-    except:
         return 2
+    except:
+        return 1
 
 def Validate_Write_Path__FILE(filepath):
     """
