@@ -1,6 +1,6 @@
 HELP_DOC = """
 BED POSTMERGE UNCOLLAPSE COMBINE REPLICATES
-(version 1.0)
+(version 2.0)
 by Angelo Chan
 
 Designed to run on the output of BED__Postmerge_Uncollapse.py. (Bio_Files_Tools)
@@ -122,7 +122,7 @@ NAME = "BED__Postmerge_Uncollapse_Combine_Replicates.py"
 AUTORUN = True
 
 WRITE_PREVENT = False # Completely prevent overwritting existing files
-WRITE_CONFIRM = True # Check to confirm overwritting existing files
+WRITE_CONFIRM = False # Check to confirm overwritting existing files
 
 PRINT_ERRORS = True
 PRINT_PROGRESS = True
@@ -601,13 +601,13 @@ def Parse_Command_Line_Input__Combine_Uncollapsed(raw_command_line_input):
         temp = []
         for j in [FILEMOD__P, FILEMOD__A, FILEMOD__T, FILEMOD__M]:
             mod = i + j
-            path_temp = Generate_Default_Output_File_Path_From_File(path_in,
+            path_temp = Generate_Default_Output_File_Path_From_File(path_groups,
                     mod, True)
             temp.append(path_temp)
         paths_out.append(temp)
     for i in [FILEMOD__UNIQUE]:
         temp = []
-        base_path = Generate_Default_Output_Folder_Path(path_in)
+        base_path = Generate_Default_Output_Folder_Path(path_groups)
         for j in [FILEMOD__P, FILEMOD__A, FILEMOD__T, FILEMOD__M]:
             path_temp = base_path + i + j
             temp.append(path_temp)
