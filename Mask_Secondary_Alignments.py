@@ -1,13 +1,13 @@
 HELP_DOC = """
 SECONDARY ALIGNMENT MASKER
-(version 1.0)
+(version 1.1)
 by Angelo Chan
 
 Modify a SAM (sequence alignment map) file to hide secondary alignments.
 
-The SAM file is presumed to contain secondary alignment info using the "XS" flag
-in the 12th column. It is also presumed to have been generated such that the XS
-value will be strictly non-positive.
+The SAM file is presumed to contain secondary alignment info using the "XS" 
+flag in the columns after the 11th. It is also presumed to have been 
+generated such that the XS value will be strictly non-positive.
 
 
 
@@ -140,9 +140,9 @@ def Mask_Secondary_Alignments(path_SAM, path_out, threshold):
     """
     Modify a SAM (sequence alignment map) file to hide secondary alignments.
 
-    The SAM file is presumed to contain secondary alignment info using the "XS"
-    flag in the 12th column. It is also presumed to have been generated such
-    that the XS value will be strictly non-positive.
+    The SAM file is presumed to contain secondary alignment info using the "XS" 
+    flag in the columns after the 11th. It is also presumed to have been 
+    generated such that the XS value will be strictly non-positive.
     
     @path_SAM
             (str - filepath)
@@ -204,12 +204,15 @@ def Mask_Secondary_Alignments(path_SAM, path_out, threshold):
         row_count += 1
         # Read and parse
         values = f.Get()
-        flags_raw = values[-1]
+        non_flags = values[:12]
+        flags = values[12:]
         # Check
-        if "XS:i:" in flags_raw:
+        go_ahead = False
+        for i in flags:
+            if "XS:i:" in i: go_ahead = True
+        if go_ahead:
             secondary_count += 1
-            flags = flags_raw.split(" ")
-            temp_vals = []
+            temp_flags = []
             for i in flags:
                 if "XS:i:" in i:
                     if threshold != 1:
@@ -217,17 +220,16 @@ def Mask_Secondary_Alignments(path_SAM, path_out, threshold):
                         XS = int(XS_str)
                         if XS >= threshold:
                             retention_count += 1
-                            temp_vals.append(i)
+                            temp_flags.append(i)
                         else:
                             removal_count += 1
                     else:
                         removal_count += 1
                 else:
-                    temp_vals.append(i)
-            new_flags_str = " ".join(temp_vals)
-            values[-1] = new_flags_str
-            # Write
-            sb = "\t".join(values) + "\n"
+                    temp_flags.append(i)
+            # Combine and Write
+            new_values = non_flags + temp_flags
+            sb = "\t".join(new_values) + "\n"
             o.write(sb)
         else:
             raw = f.Get_Raw()
