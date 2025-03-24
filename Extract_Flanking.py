@@ -1,6 +1,6 @@
 HELP_DOC = """
 EXTRACT FLANKING
-(version 1.1)
+(version 1.2)
 by Angelo Chan
 
 (Modified from Sequence_Extractor.py, v1.0)
@@ -223,6 +223,14 @@ Do you wish to overwrite them in the event of a naming clash? (y/n): """
 
 
 
+# OS Strings ###################################################################
+
+if sys.platform[:3] == "win":
+    directory_spacer = "\\"
+else:
+    directory_spacer = "/"
+
+
 # Lists ########################################################################
 
 
@@ -365,7 +373,7 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
         c.close()
         f.Close()
         t.Close()
-        PRINT.printE(STR__error_no_chr.format(c = chr_name))
+        PRINT.printE(STR__error_no_chr.format(c=chr_file_path))
         return 1
     
     # Second entry
@@ -414,7 +422,7 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                         c.close()
                         f.Close()
                         t.Close()
-                        PRINT.printE(STR__error_no_chr.format(c = chr_name))
+                        PRINT.printE(STR__error_no_chr.format(c=chr_file_path))
                         return 1
                     current_index = -1
                     chromosomes += 1
@@ -521,7 +529,7 @@ def Get_Chr_File_Path(genome_folder_path, chr_name):
     for name in names:
         first = name.split(".")[0]
         if first == chr_name:
-            filepath = genome_folder_path + "\\" + name
+            filepath = genome_folder_path + directory_spacer + name
             return filepath
     return ""
     
@@ -779,10 +787,10 @@ def Validate_Write_Path__FOLDER(folder_path):
     
     # Create a random file for testing purposes
     random_name = str(Random.random())
-    random_path = folder_path + "\\" + random_name
+    random_path = folder_path + directory_spacer + random_name
     while os.path.exists(random_path):
         random_name = str(Random.random())
-        random_path = folder_path + "\\" + random_name
+        random_path = folder_path + directory_spacer + random_name
     # Attempt to write to the folder
     try:
         f = open(random_path, "w")
