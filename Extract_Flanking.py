@@ -1,6 +1,6 @@
 HELP_DOC = """
 EXTRACT FLANKING
-(version 1.0)
+(version 1.1)
 by Angelo Chan
 
 (Modified from Sequence_Extractor.py, v1.0)
@@ -366,6 +366,7 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
         f.Close()
         t.Close()
         PRINT.printE(STR__error_no_chr.format(c = chr_name))
+        return 1
     
     # Second entry
     if not t.EOF:
