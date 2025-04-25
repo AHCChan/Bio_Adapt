@@ -1,6 +1,6 @@
 HELP_DOC = """
 EXTRACT FLANKING
-(version 1.2)
+(version 1.3)
 by Angelo Chan
 
 (Modified from Sequence_Extractor.py, v1.0)
@@ -708,18 +708,17 @@ def Validate_FASTA_Folder(dirpath):
     """
     Validates the dirpath of the input file as containing FASTA files.
     Return 0 if the dirpath is valid and contains at least 1 FASTA file.
-    Return 1 if the dirpath is valid but contains no FASTA files.
-    Return 2 if the dirpath is invalid.
+    Return 1 if the dirpath is invalid.
+    Return 2 if the dirpath is valid but contains no FASTA files.
     
     Validate_Read_Path(str) -> int
     """
     try:
-        os.listdir(dirpath)
         files = Get_Files_W_Extensions(dirpath, LIST__FASTA)
         if len(files) > 0: return 0
-        return 1
-    except:
         return 2
+    except:
+        return 1
 
 
 
