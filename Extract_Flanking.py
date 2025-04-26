@@ -1,6 +1,6 @@
 HELP_DOC = """
 EXTRACT FLANKING
-(version 1.3)
+(version 2.0)
 by Angelo Chan
 
 (Modified from Sequence_Extractor.py, v1.0)
@@ -364,7 +364,8 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
     extras = elements[4:]
     #
     current_chr_name = chr_name
-    seqs_current = [[chr_name, start, start_, end, direction, extras, ""]]
+    seqs_current = [[chr_name, start, start_, end, direction, extras, "",
+            elements]]
     
     # Open chromosome file
     chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
@@ -389,7 +390,8 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
         direction = elements[3]
         extras = elements[4:]
         #
-        seq_next = [chr_name, start, start_, end, direction, extras, ""]
+        seq_next = [chr_name, start, start_, end, direction, extras, "",
+                elements]
         
     # Main loop
     read_flag = True # In a rush, so this wasn't done via a special Class
@@ -410,7 +412,8 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                 direction = elements[3]
                 extras = elements[4:]
                 #
-                seq_next = [chr_name, start, start_, end, direction, extras, ""]
+                seq_next = [chr_name, start, start_, end, direction, extras, "",
+                        elements]
                 #
                 if current_chr_name != chr_name:
                     current_chr_name = chr_name
@@ -429,18 +432,18 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
             else:
                 read_flag = False
                 continue_flag = False
+        # Latest
+        earliest = seqs_current[0][2]
+        latest = seqs_current[0][3]
         # Add coordinates until out of range
         while read_flag and continue_flag:
-            # Latest
-            earliest = seqs_current[0][2]
-            latest = seqs_current[0][3]
             # Read
             if seq_next:
                 if seq_next[0] == current_chr_name:
                     if seq_next[1] <= latest:
                         seqs_current.append(seq_next)
-                        t.Read()
                         if not t.EOF:
+                            t.Read()
                             elements = t.Get_Current()
                             chr_name = elements[0]
                             start = int(elements[1]) - window_size
@@ -453,7 +456,7 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                             #
                             current_chr_name = chr_name
                             seq_next = [chr_name, start, start_, end, direction,
-                                    extras, ""]
+                                    extras, "", elements]
                             # Update
                             if start_ < earliest: start = earliest
                             if end > latest: latest = end
@@ -497,6 +500,7 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
             extracted_seq = (seq[6][:window_size] + seq[6][-window_size:])
             padded_seq = (pad_str + extracted_seq + pad_str)
             path = output_sequences + "/" + ID + FILEMOD__FLANKING
+            elements = seq[7]
             o.Open(path)
             o.Write_F(">" + ID + "\t" + "\t".join(elements))
             o.Newline()
@@ -655,15 +659,15 @@ def Parse_Command_Line_Input__Extract_Flanking(raw_command_line_input):
             padding_size = Validate_Int_NonNeg(arg2)
             padding_char = arg3
             if padding_size == -1:
-                printE(STR__invalid_padding_size.format(s = arg2))
+                PRINT.printE(STR__invalid_padding_size.format(s = arg2))
                 return 1
             if len(padding_char) != 1:
-                printE(STR__invalid_padding_char.format(s = arg3))
+                PRINT.printE(STR__invalid_padding_char.format(s = arg3))
                 return 1
         else: # arg == "-w"Validate_Int_NonNeg(arg2)
             window_size = Validate_Int_NonNeg(arg2)
             if window_size == -1:
-                printE(STR__invalid_window_size.format(s = arg2))
+                PRINT.printE(STR__invalid_window_size.format(s = arg2))
                 return 1
 
     # Validate output paths
