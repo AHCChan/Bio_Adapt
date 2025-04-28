@@ -1,6 +1,6 @@
 HELP_DOC = """
 EXTRACT FLANKING
-(version 2.0)
+(version 3.0)
 by Angelo Chan
 
 (Modified from Sequence_Extractor.py, v1.0)
@@ -202,10 +202,14 @@ Please specify a non-negative integer.
 
 
 STR__metrics = """
-         Chromosomes: {A}
-    Basepairs copied: {B}
-            Overlaps: {C}
-    Sequences copied: {D}
+                Chromosomes: {A}
+
+            Total Sequences: {B}
+           Sequences Copied: {C}
+    Sequences Out of Bounds: {D}
+
+           Basepairs Copied: {E}
+                    Overlap: {F}
 """
 
 STR__extract_begin = "\nRunning Extract_Flanking..."
@@ -316,10 +320,12 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
     
     # Setup reporting
     chromosomes = 1
+    seqs_total = 0
+    seqs_copied = 0
+    seqs_skipped = 0
     basepairs_original = 0
     basepairs_copied = 0
     overlaps = 0
-    seqs_copied = 0
     
     # Setup the I/O
     current_chr_name = ""
@@ -401,6 +407,20 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
         if not seqs_current:
             seqs_current = [seq_next]
             t.Read()
+            if current_chr_name != chr_name:
+                current_chr_name = seq_next[0]
+                f.Close()
+                f.Open
+                chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
+                f.Open(chr_file_path)
+                if f.End():
+                    c.close()
+                    f.Close()
+                    t.Close()
+                    PRINT.printE(STR__error_no_chr.format(c=chr_file_path))
+                    return 1
+                current_index = -1
+                chromosomes += 1
             elements = t.Get_Current()
             if elements:
                 chr_name = elements[0]
@@ -414,21 +434,6 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                 #
                 seq_next = [chr_name, start, start_, end, direction, extras, "",
                         elements]
-                #
-                if current_chr_name != chr_name:
-                    current_chr_name = chr_name
-                    f.Close()
-                    f.Open
-                    chr_file_path = Get_Chr_File_Path(input_genome, chr_name)
-                    f.Open(chr_file_path)
-                    if f.End():
-                        c.close()
-                        f.Close()
-                        t.Close()
-                        PRINT.printE(STR__error_no_chr.format(c=chr_file_path))
-                        return 1
-                    current_index = -1
-                    chromosomes += 1
             else:
                 read_flag = False
                 continue_flag = False
@@ -442,6 +447,11 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                 if seq_next[0] == current_chr_name:
                     if seq_next[1] <= latest:
                         seqs_current.append(seq_next)
+                        # Update
+                        current_chr_name = seq_next[0]
+                        if seq_next[2] < earliest: earliest = seq_next[2]
+                        if seq_next[3] > latest: latest = seq_next[3]
+                        # Buffer next element
                         if not t.EOF:
                             t.Read()
                             elements = t.Get_Current()
@@ -454,12 +464,8 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                             direction = elements[3]
                             extras = elements[4:]
                             #
-                            current_chr_name = chr_name
                             seq_next = [chr_name, start, start_, end, direction,
                                     extras, "", elements]
-                            # Update
-                            if start_ < earliest: start = earliest
-                            if end > latest: latest = end
                         else:
                             read_flag = False
                             continue_flag = False
@@ -471,11 +477,11 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                 read_flag = False
                 remaining_flag = False
         # Read until start
-        while current_index < earliest:
+        while current_index < earliest and not f.EOF:
             f.Read()
             current_index += 1
         # Read until end
-        while current_index < latest:
+        while current_index < latest and not f.EOF:
             f.Read()
             current_index += 1
             nuc = f.Get()
@@ -489,25 +495,30 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
                     overlaps += overlap_temp
         # Process elements
         for seq in seqs_current:
-            seqs_copied += 1
-            ID = Generate_Seq_ID(seqs_copied)
-            if seq[4] == "-":
-                seq[6] = Get_Complement(seq[6], True)
-            sb = "\t".join([ID, seq[0], str(seq[1]), str(seq[3]), seq[4]] +
-                    seq[5]) + "\n"
-            c.write(sb)
-            #
-            extracted_seq = (seq[6][:window_size] + seq[6][-window_size:])
-            padded_seq = (pad_str + extracted_seq + pad_str)
-            path = output_sequences + "/" + ID + FILEMOD__FLANKING
-            elements = seq[7]
-            o.Open(path)
-            o.Write_F(">" + ID + "\t" + "\t".join(elements))
-            o.Newline()
-            o.Write(padded_seq)
-            o.Close_Newline()
-            #
-            basepairs_copied += len(extracted_seq)
+            seqs_total += 1
+            ID = Generate_Seq_ID(seqs_total)
+            if current_index < seq[3]:
+                seqs_skipped += 1
+                sb = "\t".join([ID, seq[0], str(seq[1]), str(seq[3]), seq[4],
+                        "Out_Of_Bounds"] + seq[5]) + "\n"
+                c.write(sb)
+            else:
+                seqs_copied += 1
+                sb = "\t".join([ID, seq[0], str(seq[1]), str(seq[3]), seq[4],
+                        "Successful"] + seq[5]) + "\n"
+                c.write(sb)
+                if seq[4] == "-":
+                    seq[6] = Get_Complement(seq[6], True)
+                extracted_seq = (seq[6][:window_size] + seq[6][-window_size:])
+                padded_seq = (pad_str + extracted_seq + pad_str)
+                path = output_sequences + "/" + ID + FILEMOD__FLANKING
+                elements = seq[7]
+                o.Open(path)
+                o.Write_F(">" + ID + "\t" + "\t".join(elements))
+                o.Newline()
+                o.Write(padded_seq)
+                o.Close_Newline()
+                basepairs_copied += len(extracted_seq)
         seqs_current = []
     
     PRINT.printP(STR__extract_complete)
@@ -518,7 +529,8 @@ def Extract_Flanking(input_genome, input_coordinates, output_sequences,
     t.Close()
     
     # Reporting
-    Report_Metrics([chromosomes, basepairs_copied, overlaps, seqs_copied])
+    Report_Metrics([chromosomes, seqs_total, seqs_copied, seqs_skipped,
+            basepairs_copied, overlaps])
 
     # Wrap up
     return 0
@@ -555,26 +567,31 @@ def Report_Metrics(summary_metrics):
             (list<int>)
             A list of summary metrics for the data, including:
                 * The number of chromosomes from which sequeces were extracted
-                * The total number of unique basepairs copied
-                * The total number of overlaps
-                * The total number of sequences copied
+                * The total number of sequences processed
+                * The number of sequences copied
+                * The number of sequences skipped for having coordinates which
+                  were out of bounds.
+                * The number of unique basepairs copied
+                * The number of overlaps
     
     Report_Metrics([int, int, int, int]) -> None
     """
     # Unpacking
-    chromosomes, basepairs, overlaps, sequences = summary_metrics
+    chromosomes, seqs, copied, skipped, basepairs, overlaps = summary_metrics
     # Strings
     chromosomes = str(chromosomes)
+    seqs = str(seqs)
+    copied = str(copied)
+    skipped = str(skipped)
     basepairs = str(basepairs)
     overlaps = str(overlaps)
-    sequences = str(sequences)
     # Pad Column 1
-    col_1 = [chromosomes, basepairs, overlaps, sequences]
+    col_1 = [chromosomes, seqs, copied, skipped, basepairs, overlaps]
     col_1 = Pad_Column(col_1, 0, 0, " ", 0)
-    chromosomes, basepairs, overlaps, sequences = col_1
+    chromosomes, seqs, copied, skipped, basepairs, overlaps = col_1
     # Print
-    PRINT.printM(STR__metrics.format(A = chromosomes, B = basepairs,
-            C = overlaps, D = sequences))
+    PRINT.printM(STR__metrics.format(A = chromosomes, B = seqs, C = copied,
+            D = skipped, E = basepairs, F = overlaps))
 
 
 
