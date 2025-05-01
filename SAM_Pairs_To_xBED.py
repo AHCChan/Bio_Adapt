@@ -1,6 +1,6 @@
 HELP_DOC = """
 SAM PAIRS TO XBED
-(version 1.0)
+(version 2.0)
 by Angelo Chan
 
 This is a program which takes an unsorted SAM file of aligned read pairs and
@@ -11,14 +11,16 @@ is outputted:
     2*) Consensus chromosome name.
     3*) Fragment starting position.
     4*) Fragment ending position.
-    5`) Distance between the two reads.
-    6*) Fragment size.
-    7)  Chromosome name of the first read's alignment.
-    8)  Starting position of the first read's alignment.
-    9)  Starting position of the first read's alignment.
-    10')Chromosome name of the second read's alignment.
-    11')Starting position of the second read's alignment.
-    12')Starting position of the second read's alignment.
+    5*) Fragment size.
+    6`) Gap starting position.
+    7`) Gap ending position.
+    8`) Distance between the two reads. (Gap size)
+    9)  Chromosome name of the first read's alignment.
+    10)  Starting position of the first read's alignment.
+    11)  Starting position of the first read's alignment.
+    12')Chromosome name of the second read's alignment.
+    13')Starting position of the second read's alignment.
+    14')Starting position of the second read's alignment.
     
     * - Only applies if both reads aligned to the same chromosome. This column
         will have a placeholder if this is not the case.
@@ -36,9 +38,11 @@ Placeholders:
     4)  -1
     5)  -1
     6)  -1
-    10) .
-    11) -1
-    12) -1
+    7)  -1
+    8)  -1
+    12) .
+    13) -1
+    14) -1
 
 
 
@@ -191,35 +195,57 @@ def Pair_SAM_Reads(path_SAM, path_output):
         if (not stored):
             stored = [ID, chrom, start, end]
         elif ID != stored[0]:
-            sb = (stored[0] + "\t.\t-1\t-1\t-1\t-1\t" + stored[1] + "\t" +
-                    str(stored[2]) + "\t" + str(stored[3]) + "\t.\t-1\t-1\n")
+            sb = (stored[0] + "\t.\t-1\t-1\t-1\t-1\t-1\t-1\t" + stored[1] + "\t"
+                    + str(stored[2]) + "\t" + str(stored[3]) + "\t.\t-1\t-1\n")
             o.write(sb)
             stored = [ID, chrom, start, end]
         else: # ID == stored_ID
             count_pairs += 1
             if chrom != stored[1]: # Different chromosomes
-                sb = (stored[0] + "\t.\t-1\t-1\t-1\t-1\t" + stored[1] + "\t" +
-                        str(stored[2]) + "\t" + str(stored[3]) + "\t" + chrom +
-                        "\t" + f[3] + "\t" + str(end) + "\n")
+                sb = (stored[0] + "\t.\t-1\t-1\t-1\t-1\t-1\t-1\t" + stored[1] + "\t"
+                        + str(stored[2]) + "\t" + str(stored[3]) + "\t" + chrom
+                        + "\t" + f[3] + "\t" + str(end) + "\n")
             else: # Same chromsomes
                 count_pairs_same += 1
-                gap = start - stored[3] - 1
-                if gap < 0: gap = 0
+                # Coordinates
+                if stored[2] < start:
+                    earliest = stored[2]
+                    latest_start = start
+                else: # stored[2] >= start
+                    earliest = start
+                    latest_start = stored[2]
+                if end > stored[3]:
+                    latest = end
+                    earliest_end = stored[3]
+                else: # end <= stored[3]
+                    latest = stored[3]
+                    earliest_end = end
+                # Gap
+                if latest_start > earliest_end:
+                    gap = (latest_start - earliest_end) - 1
+                    gap_str = (str(earliest_end) + "\t" + str(latest_start) +
+                            "\t" + str(gap))
+                else:
+                    gap = 0
+                    gap_str = "-1\t-1\t-1"
                 total_gaps += gap
-                frag_size = (end - stored[2]) + 1
+                # Fragment size
+                frag_size = (latest - earliest) + 1
                 if frag_size < 0: frag_size = 0
                 total_frag_Ns += frag_size
-                
-                sb = (stored[0] + "\t" + chrom + "\t" + str(stored[2]) + "\t" +
-                        str(end) + "\t" + str(gap) + "\t" + str(frag_size) +
-                        "\t" + str(stored[2]) + "\t" + str(stored[3]) + "\t" +
-                        chrom + "\t" + f[3] + "\t" + str(end) + "\n")
+                frag_str = (str(earliest) + "\t" + str(latest) + "\t" +
+                        str(frag_size))
+                # Stringbuilder
+                sb = (stored[0] + "\t" + chrom + "\t" +
+                        frag_str + "\t" + gap_str + "\t" +
+                        chrom + "\t" + str(stored[2]) + "\t" + str(stored[3]) +
+                        "\t" + chrom + "\t" + f[3] + "\t" + str(end) + "\n")
             o.write(sb)
             stored = []
     
     # Last line, if unpaired
     if stored:
-        sb = (stored[0] + "\t.\t-1\t-1\t-1\t-1\t" + stored[1] + "\t" +
+        sb = (stored[0] + "\t.\t-1\t-1\t-1\t-1\t-1\t-1\t" + stored[1] + "\t" +
                 str(stored[2]) + "\t" + str(stored[3]) + "\t.\t-1\t-1\n")
         o.write(sb)
     
